@@ -1,133 +1,128 @@
-from fastapi import FastAPI, HTTPException, Path
+from fastapi import FastAPI, HTTPException, Path, status
 
-from app.schemas import EmployeeCreate, EmployeeResponse, EmployeeUpdate
-from app.services import (
+from .schemas import EmployeeCreate, EmployeeResponse, EmployeeUpdate
+from .services import (
     create_employee,
-    get_all_employees,
-    get_employee,
-    update_employee,
     delete_employee,
+    email_exists,
+    get_all_employees,
+    get_employee_by_id,
+    update_employee,
 )
+
 
 app = FastAPI(
     title="Employee Management API",
-    description="FastAPI backend for managing employee records",
+    description="Beginner FastAPI application for managing employee records",
     version="1.0.0",
 )
 
 
-@app.get("/")
-def home():
-    return {"message": "Employee Management API is running"}
-
-
 @app.get("/health")
 def health_check():
-    return {"status": "healthy"}
-
-
-@app.post("/employees", response_model=EmployeeResponse, status_code=201)
-def add_employee(employee: EmployeeCreate):
-    # Required text fields must not be empty/whitespace-only.
-    required_fields = {
-        "name": employee.name,
-        "department": employee.department,
-        "primary_skill": employee.primary_skill,
-        "location": employee.location,
+    return {
+        "status": "success",
+        "message": "Employee Management API is running"
     }
 
-    for field, value in required_fields.items():
-        if not value.strip():
-            raise HTTPException(
-                status_code=422,
-                detail=f"{field} must not be empty"
-            )
 
-    # Email must be unique (case-insensitive).
-    email = str(employee.email).lower()
-    if any(str(item["email"]).lower() == email for item in get_all_employees()):
+@app.post(
+    "/employees",
+    response_model=EmployeeResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_new_employee(employee: EmployeeCreate):
+
+    if email_exists(str(employee.email)):
         raise HTTPException(
-            status_code=409,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already exists"
         )
 
     return create_employee(employee)
 
 
-@app.get("/employees", response_model=list[EmployeeResponse])
-def read_employees():
+@app.get(
+    "/employees",
+    response_model=list[EmployeeResponse],
+)
+def list_employees():
     return get_all_employees()
 
 
-@app.get("/employees/{employee_id}", response_model=EmployeeResponse)
-def read_employee(
-    employee_id: int = Path(..., gt=0, description="Employee ID must be greater than 0")
+@app.get(
+    "/employees/{employee_id}",
+    response_model=EmployeeResponse,
+)
+def get_employee(
+    employee_id: int = Path(
+        ...,
+        gt=0,
+        description="Employee ID must be greater than 0"
+    )
 ):
-    employee = get_employee(employee_id)
+    employee = get_employee_by_id(employee_id)
 
     if employee is None:
-        raise HTTPException(status_code=404, detail="Employee not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Employee with ID {employee_id} not found"
+        )
 
     return employee
 
 
-@app.put("/employees/{employee_id}", response_model=EmployeeResponse)
-def edit_employee(
-    employee_id: int,
+@app.put(
+    "/employees/{employee_id}",
+    response_model=EmployeeResponse,
+)
+def update_existing_employee(
     employee: EmployeeUpdate,
+    employee_id: int = Path(
+        ...,
+        gt=0,
+        description="Employee ID must be greater than 0"
+    )
 ):
-    if employee_id <= 0:
+
+    existing_employee = get_employee_by_id(employee_id)
+
+    if existing_employee is None:
         raise HTTPException(
-            status_code=422,
-            detail="Employee ID must be greater than 0"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Employee with ID {employee_id} not found"
         )
 
-    existing = get_employee(employee_id)
-
-    if existing is None:
-        raise HTTPException(status_code=404, detail="Employee not found")
-
-    update_data = employee.model_dump(exclude_unset=True)
-
-    for field in ("name", "department", "primary_skill", "location"):
-        if field in update_data and (
-            not isinstance(update_data[field], str)
-            or not update_data[field].strip()
-        ):
-            raise HTTPException(
-                status_code=422,
-                detail=f"{field} must not be empty"
-            )
-
-    if "email" in update_data:
-        email = str(update_data["email"]).lower()
-        if any(
-            item["id"] != employee_id
-            and str(item["email"]).lower() == email
-            for item in get_all_employees()
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail="Email already exists"
-            )
+    if email_exists(str(employee.email), exclude_id=employee_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already exists"
+        )
 
     return update_employee(employee_id, employee)
 
 
-@app.delete("/employees/{employee_id}")
-def remove_employee(employee_id: int):
-    if employee_id <= 0:
+@app.delete(
+    "/employees/{employee_id}",
+    status_code=status.HTTP_200_OK,
+)
+def delete_existing_employee(
+    employee_id: int = Path(
+        ...,
+        gt=0,
+        description="Employee ID must be greater than 0"
+    )
+):
+
+    employee = delete_employee(employee_id)
+
+    if employee is None:
         raise HTTPException(
-            status_code=422,
-            detail="Employee ID must be greater than 0"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Employee with ID {employee_id} not found"
         )
 
-    deleted_employee = delete_employee(employee_id)
-
-    if deleted_employee is None:
-        raise HTTPException(status_code=404, detail="Employee not found")
-
     return {
-        "message": "Employee deleted successfully",
-        "employee": deleted_employee,
+        "message": f"Employee with ID {employee_id} deleted successfully",
+        "employee": employee
     }
