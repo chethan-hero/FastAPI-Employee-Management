@@ -11,8 +11,6 @@ def create_employee(
     employee_data: EmployeeCreate
 ):
     email = str(employee_data.email).strip().lower()
-
-    # Case-insensitive duplicate check
     existing_employee = (
         db.query(Employee)
         .filter(func.lower(Employee.email) == email)

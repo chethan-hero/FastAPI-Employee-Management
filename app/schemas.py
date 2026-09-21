@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Literal
-
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
@@ -26,23 +25,16 @@ class EmployeeBase(BaseModel):
             raise ValueError(
                 "Field cannot be empty or whitespace-only"
             )
-
         return value
 
     @field_validator("email")
     @classmethod
     def normalize_email(cls, value: EmailStr) -> str:
         return str(value).strip().lower()
-
-
 class EmployeeCreate(EmployeeBase):
     pass
-
-
 class EmployeeUpdate(EmployeeBase):
     pass
-
-
 class EmployeeResponse(EmployeeBase):
     id: int
     is_active: bool

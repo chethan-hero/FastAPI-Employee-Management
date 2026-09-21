@@ -15,8 +15,6 @@ from .services import (
     update_employee
 )
 
-
-# Create the employees table if it does not exist
 Base.metadata.create_all(bind=engine)
 
 
@@ -26,23 +24,12 @@ app = FastAPI(
     version="2.0.0"
 )
 
-
-# --------------------------------------------------
-# HEALTH CHECK
-# --------------------------------------------------
-
 @app.get("/health")
 def health_check():
     return {
         "status": "healthy",
         "message": "Application is running"
     }
-
-
-# --------------------------------------------------
-# CREATE EMPLOYEE
-# --------------------------------------------------
-
 @app.post(
     "/employees",
     response_model=EmployeeResponse,
@@ -56,19 +43,13 @@ def create_employee_api(
         db,
         employee
     )
-
     if error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=error
         )
-
     return new_employee
 
-
-# --------------------------------------------------
-# GET ALL EMPLOYEES
-# --------------------------------------------------
 
 @app.get(
     "/employees",
@@ -78,11 +59,6 @@ def get_employees(
     db: Session = Depends(get_db)
 ):
     return get_all_employees(db)
-
-
-# --------------------------------------------------
-# GET EMPLOYEE BY ID
-# --------------------------------------------------
 
 @app.get(
     "/employees/{employee_id}",
@@ -97,7 +73,6 @@ def get_employee_by_id(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Employee ID must be greater than 0"
         )
-
     employee = get_employee(
         db,
         employee_id
@@ -108,13 +83,7 @@ def get_employee_by_id(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Employee not found"
         )
-
     return employee
-
-
-# --------------------------------------------------
-# UPDATE EMPLOYEE
-# --------------------------------------------------
 
 @app.put(
     "/employees/{employee_id}",
@@ -152,9 +121,6 @@ def update_employee_api(
     return updated_employee
 
 
-# --------------------------------------------------
-# DELETE EMPLOYEE
-# --------------------------------------------------
 
 @app.delete("/employees/{employee_id}")
 def delete_employee_api(
