@@ -1,65 +1,147 @@
-from datetime import datetime
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
-employees = []
-next_id = 1
-
-
-def create_employee(employee_data):
-    global next_id
-
-    employee = {
-        "id": next_id,
-        "name": employee_data.name.strip(),
-        "email": str(employee_data.email),
-        "department": employee_data.department.strip(),
-        "primary_skill": employee_data.primary_skill.strip(),
-        "location": employee_data.location.strip(),
-        "work_mode": employee_data.work_mode,
-        "is_active": employee_data.is_active,
-        "created_at": datetime.now()
-    }
-
-    employees.append(employee)
-    next_id += 1
-    return employee
+from .models import Employee
+from .schemas import EmployeeCreate, EmployeeUpdate
 
 
-def get_all_employees():
-    return employees
+def create_employee(
+    db: Session,
+    employee_data: EmployeeCreate
+):
+    email = str(employee_data.email).strip().lower()
+
+    # Case-insensitive duplicate check
+    existing_employee = (
+        db.query(Employee)
+        .filter(func.lower(Employee.email) == email)
+        .first()
+    )
+
+    if existing_employee:
+        return None, "Email already exists"
+
+    employee = Employee(
+        name=employee_data.name,
+        email=email,
+        department=employee_data.department,
+        primary_skill=employee_data.primary_skill,
+        location=employee_data.location,
+        work_mode=employee_data.work_mode,
+        is_active=True
+    )
+
+    try:
+        db.add(employee)
+        db.commit()
+        db.refresh(employee)
+
+        return employee, None
+
+    except IntegrityError:
+        db.rollback()
+
+        return None, "Email already exists"
+
+    except Exception:
+        db.rollback()
+        raise
 
 
-def get_employee(employee_id):
-    for employee in employees:
-        if employee["id"] == employee_id:
-            return employee
-    return None
+def get_all_employees(db: Session):
+    return (
+        db.query(Employee)
+        .order_by(Employee.id)
+        .all()
+    )
 
 
-def update_employee(employee_id, employee_data):
-    employee = get_employee(employee_id)
+def get_employee(
+    db: Session,
+    employee_id: int
+):
+    return (
+        db.query(Employee)
+        .filter(Employee.id == employee_id)
+        .first()
+    )
+
+
+def update_employee(
+    db: Session,
+    employee_id: int,
+    employee_data: EmployeeUpdate
+):
+    employee = get_employee(
+        db,
+        employee_id
+    )
 
     if employee is None:
-        return None
+        return None, "Employee not found"
 
-    update_data = employee_data.model_dump(exclude_unset=True)
+    email = str(employee_data.email).strip().lower()
 
-    for key, value in update_data.items():
-        if isinstance(value, str) and key in {
-            "name", "department", "primary_skill", "location"
-        }:
-            value = value.strip()
-        if key == "email":
-            value = str(value)
-        employee[key] = value
+    # Check email against other employees
+    duplicate = (
+        db.query(Employee)
+        .filter(
+            func.lower(Employee.email) == email,
+            Employee.id != employee_id
+        )
+        .first()
+    )
 
-    return employee
+    if duplicate:
+        return None, "Email already exists"
+
+    try:
+        employee.name = employee_data.name
+        employee.email = email
+        employee.department = employee_data.department
+        employee.primary_skill = employee_data.primary_skill
+        employee.location = employee_data.location
+        employee.work_mode = employee_data.work_mode
+
+        # Do NOT change:
+        # employee.id
+        # employee.is_active
+        # employee.created_at
+
+        db.commit()
+        db.refresh(employee)
+
+        return employee, None
+
+    except IntegrityError:
+        db.rollback()
+
+        return None, "Email already exists"
+
+    except Exception:
+        db.rollback()
+        raise
 
 
-def delete_employee(employee_id):
-    employee = get_employee(employee_id)
+def delete_employee(
+    db: Session,
+    employee_id: int
+):
+    employee = get_employee(
+        db,
+        employee_id
+    )
 
     if employee is None:
-        return None
+        return False
 
-    employees.remove(employee)
-    return employee
+    try:
+        db.delete(employee)
+        db.commit()
+
+        return True
+
+    except Exception:
+        db.rollback()
+        raise

@@ -1,29 +1,35 @@
-from fastapi import FastAPI, HTTPException, Path, status
-from typing import List
+from fastapi import Depends, FastAPI, HTTPException, status
+from sqlalchemy.orm import Session
 
-from app.schemas import EmployeeCreate, EmployeeResponse, EmployeeUpdate
-from app.services import (
+from .database import Base, engine, get_db
+from .schemas import (
+    EmployeeCreate,
+    EmployeeResponse,
+    EmployeeUpdate
+)
+from .services import (
     create_employee,
+    delete_employee,
     get_all_employees,
     get_employee,
-    update_employee,
-    delete_employee,
+    update_employee
 )
+
+
+# Create the employees table if it does not exist
+Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI(
     title="Employee Management API",
-    description="FastAPI Employee Management System - Task 1",
-    version="1.0.0",
+    description="Employee Management API using FastAPI, MySQL and SQLAlchemy",
+    version="2.0.0"
 )
 
 
-@app.get("/")
-def home():
-    return {
-        "message": "Employee Management API is running"
-    }
-
+# --------------------------------------------------
+# HEALTH CHECK
+# --------------------------------------------------
 
 @app.get("/health")
 def health_check():
@@ -33,41 +39,69 @@ def health_check():
     }
 
 
+# --------------------------------------------------
+# CREATE EMPLOYEE
+# --------------------------------------------------
+
 @app.post(
     "/employees",
     response_model=EmployeeResponse,
     status_code=status.HTTP_201_CREATED
 )
-def add_employee(employee: EmployeeCreate):
-    try:
-        return create_employee(employee)
-    except ValueError as e:
+def create_employee_api(
+    employee: EmployeeCreate,
+    db: Session = Depends(get_db)
+):
+    new_employee, error = create_employee(
+        db,
+        employee
+    )
+
+    if error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=str(e)
+            detail=error
         )
 
+    return new_employee
+
+
+# --------------------------------------------------
+# GET ALL EMPLOYEES
+# --------------------------------------------------
 
 @app.get(
     "/employees",
-    response_model=List[EmployeeResponse]
+    response_model=list[EmployeeResponse]
 )
-def list_employees():
-    return get_all_employees()
+def get_employees(
+    db: Session = Depends(get_db)
+):
+    return get_all_employees(db)
 
+
+# --------------------------------------------------
+# GET EMPLOYEE BY ID
+# --------------------------------------------------
 
 @app.get(
     "/employees/{employee_id}",
     response_model=EmployeeResponse
 )
 def get_employee_by_id(
-    employee_id: int = Path(
-        ...,
-        gt=0,
-        description="Employee ID must be greater than 0"
-    )
+    employee_id: int,
+    db: Session = Depends(get_db)
 ):
-    employee = get_employee(employee_id)
+    if employee_id <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Employee ID must be greater than 0"
+        )
+
+    employee = get_employee(
+        db,
+        employee_id
+    )
 
     if employee is None:
         raise HTTPException(
@@ -78,45 +112,65 @@ def get_employee_by_id(
     return employee
 
 
+# --------------------------------------------------
+# UPDATE EMPLOYEE
+# --------------------------------------------------
+
 @app.put(
     "/employees/{employee_id}",
     response_model=EmployeeResponse
 )
-def edit_employee(
+def update_employee_api(
+    employee_id: int,
     employee: EmployeeUpdate,
-    employee_id: int = Path(
-        ...,
-        gt=0,
-        description="Employee ID must be greater than 0"
-    )
+    db: Session = Depends(get_db)
 ):
-    try:
-        updated_employee = update_employee(employee_id, employee)
-
-        if updated_employee is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Employee not found"
-            )
-
-        return updated_employee
-
-    except ValueError as e:
+    if employee_id <= 0:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Employee ID must be greater than 0"
         )
 
+    updated_employee, error = update_employee(
+        db,
+        employee_id,
+        employee
+    )
+
+    if error == "Employee not found":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=error
+        )
+
+    if error == "Email already exists":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=error
+        )
+
+    return updated_employee
+
+
+# --------------------------------------------------
+# DELETE EMPLOYEE
+# --------------------------------------------------
 
 @app.delete("/employees/{employee_id}")
-def remove_employee(
-    employee_id: int = Path(
-        ...,
-        gt=0,
-        description="Employee ID must be greater than 0"
-    )
+def delete_employee_api(
+    employee_id: int,
+    db: Session = Depends(get_db)
 ):
-    deleted = delete_employee(employee_id)
+    if employee_id <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Employee ID must be greater than 0"
+        )
+
+    deleted = delete_employee(
+        db,
+        employee_id
+    )
 
     if not deleted:
         raise HTTPException(

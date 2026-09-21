@@ -1,34 +1,53 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
 from datetime import datetime
-from enum import Enum
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
-class WorkMode(str, Enum):
-    WFH = "WFH"
-    WFO = "WFO"
-
-
-class EmployeeCreate(BaseModel):
+class EmployeeBase(BaseModel):
     name: str
     email: EmailStr
     department: str
     primary_skill: str
     location: str
-    work_mode: WorkMode
-    is_active: bool = True
+    work_mode: Literal["WFH", "WFO"]
+
+    @field_validator(
+        "name",
+        "department",
+        "primary_skill",
+        "location"
+    )
+    @classmethod
+    def validate_required_fields(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError(
+                "Field cannot be empty or whitespace-only"
+            )
+
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
 
 
-class EmployeeResponse(EmployeeCreate):
+class EmployeeCreate(EmployeeBase):
+    pass
+
+
+class EmployeeUpdate(EmployeeBase):
+    pass
+
+
+class EmployeeResponse(EmployeeBase):
     id: int
+    is_active: bool
     created_at: datetime
 
-
-class EmployeeUpdate(BaseModel):
-    name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    department: Optional[str] = None
-    primary_skill: Optional[str] = None
-    location: Optional[str] = None
-    work_mode: Optional[WorkMode] = None
-    is_active: Optional[bool] = None
+    model_config = ConfigDict(
+        from_attributes=True
+    )
