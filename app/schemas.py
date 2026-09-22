@@ -1,45 +1,62 @@
 from datetime import datetime
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
-class EmployeeBase(BaseModel):
+class EmployeeCreate(BaseModel):
+    name: str = Field(min_length=1)
+    email: EmailStr
+    department: str = Field(min_length=1)
+    primary_skill: str = Field(min_length=1)
+    location: str = Field(min_length=1)
+    work_mode: Literal["WFH", "WFO"]
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "name": "chandu",
+                "email": "chandu@gmail.com",
+                "department": "Development",
+                "primary_skill": "Python",
+                "location": "Mandya",
+                "work_mode": "WFO"
+            }
+        }
+    )
+
+
+class EmployeeUpdate(BaseModel):
+    name: str = Field(min_length=1)
+    email: EmailStr
+    department: str = Field(min_length=1)
+    primary_skill: str = Field(min_length=1)
+    location: str = Field(min_length=1)
+    work_mode: Literal["WFH", "WFO"]
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "name": "Chandu Updated",
+                "email": "chandu@gmail.com",
+                "department": "Development",
+                "primary_skill": "Python",
+                "location": "Mandya",
+                "work_mode": "WFO"
+            }
+        }
+    )
+
+
+class EmployeeResponse(BaseModel):
+    id: int
     name: str
     email: EmailStr
     department: str
     primary_skill: str
     location: str
     work_mode: Literal["WFH", "WFO"]
-
-    @field_validator(
-        "name",
-        "department",
-        "primary_skill",
-        "location"
-    )
-    @classmethod
-    def validate_required_fields(cls, value: str) -> str:
-        value = value.strip()
-
-        if not value:
-            raise ValueError(
-                "Field cannot be empty or whitespace-only"
-            )
-        return value
-
-    @field_validator("email")
-    @classmethod
-    def normalize_email(cls, value: EmailStr) -> str:
-        return str(value).strip().lower()
-class EmployeeCreate(EmployeeBase):
-    pass
-class EmployeeUpdate(EmployeeBase):
-    pass
-class EmployeeResponse(EmployeeBase):
-    id: int
     is_active: bool
     created_at: datetime
 
-    model_config = ConfigDict(
-        from_attributes=True
-    )
+    model_config = ConfigDict(from_attributes=True)
