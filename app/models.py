@@ -10,8 +10,6 @@ from sqlalchemy import (
 )
 
 from .database import Base
-
-
 class Employee(Base):
     __tablename__ = "employees"
 
