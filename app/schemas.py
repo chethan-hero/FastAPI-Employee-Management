@@ -15,11 +15,7 @@ class EmployeeCreate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-<<<<<<< HEAD
-                "name": "chandu",
-=======
                 "name": "Chandu",
->>>>>>> b33a55b (Add employee validation and transaction handling)
                 "email": "chandu@gmail.com",
                 "department": "Development",
                 "primary_skill": "Python",
