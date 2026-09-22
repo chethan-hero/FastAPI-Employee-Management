@@ -217,13 +217,3 @@ __pycache__/
 Thumbs.db
 ```
 
-The `.env.example` file can be used to show the required database configuration without exposing the actual password.
-<<<<<<< HEAD
-Employee records are stored permanently in MySQL and can be managed through the FastAPI REST API.
-Employee Management API
-
-FastAPI Employee Management - Task 2
-=======
-
-Employee records are stored permanently in MySQL and can be managed through the FastAPI REST API.
->>>>>>> f885de8 (Task 2: Add MySQL and SQLAlchemy database)
