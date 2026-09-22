@@ -2,30 +2,34 @@ import os
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 load_dotenv()
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError(
-        "DATABASE_URL is not configured. "
-        "Please create a .env file."
+        "DATABASE_URL is not configured. Create a .env file using .env.example."
     )
 
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(
-    autocommit=False,
+    bind=engine,
     autoflush=False,
-    bind=engine
+    autocommit=False,
 )
-Base = declarative_base()
-def get_db():
-    db = SessionLocal()
 
+
+class Base(DeclarativeBase):
+    pass
+
+
+def get_db():
+    db: Session = SessionLocal()
     try:
         yield db
     finally:

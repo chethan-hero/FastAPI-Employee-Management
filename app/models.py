@@ -1,69 +1,41 @@
 from datetime import datetime
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    Integer,
-    String,
-    UniqueConstraint,
-)
+from sqlalchemy import Boolean, DateTime, Integer, String, UniqueConstraint, func
+from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
+
+
 class Employee(Base):
     __tablename__ = "employees"
 
     __table_args__ = (
-        UniqueConstraint(
-            "email",
-            name="uq_employees_email"
-        ),
+        UniqueConstraint("email", name="uq_employees_email"),
     )
 
-    id = Column(
+    id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True,
-        autoincrement=True
+        autoincrement=True,
     )
 
-    name = Column(
-        String(100),
-        nullable=False
-    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    department: Mapped[str] = mapped_column(String(100), nullable=False)
+    primary_skill: Mapped[str] = mapped_column(String(100), nullable=False)
+    location: Mapped[str] = mapped_column(String(100), nullable=False)
+    work_mode: Mapped[str] = mapped_column(String(3), nullable=False)
 
-    email = Column(
-        String(255),
-        nullable=False
-    )
-
-    department = Column(
-        String(100),
-        nullable=False
-    )
-
-    primary_skill = Column(
-        String(100),
-        nullable=False
-    )
-
-    location = Column(
-        String(100),
-        nullable=False
-    )
-
-    work_mode = Column(
-        String(3),
-        nullable=False
-    )
-
-    is_active = Column(
+    is_active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
-        default=True
+        default=True,
+        server_default="1",
     )
 
-    created_at = Column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow
+        default=datetime.utcnow,
+        server_default=func.now(),
     )
