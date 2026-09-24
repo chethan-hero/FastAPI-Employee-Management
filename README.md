@@ -1,33 +1,36 @@
-````markdown
 # FastAPI Employee Management API
+A REST API for managing employee records using FastAPI, MySQL, SQLAlchemy, and Pydantic.
 
-## Project Overview
+## Features
+- Employee CRUD operations
+- MySQL database integration
+- SQLAlchemy ORM
+- Request validation
+- Case-insensitive unique email
+- Search employees by name
+- Filter by department
+- Filter by work mode
+- Filter by active status
+- Pagination using limit and offset
+- Automatic database table creation
+- Database error handling
+- Swagger UI documentation
+- Git and GitHub
 
-This project is a FastAPI backend application developed to manage employee records.
+## Technologies
 
-The project was completed in three tasks:
-
-- Task 1 - Employee CRUD using Python list
-- Task 2 - MySQL database integration using SQLAlchemy
-- Task 3 - Search, filtering and pagination
-
-## Technologies Used
-
-- Python 3.12
+- Python 3.12+
 - FastAPI
 - Pydantic
-- MySQL
 - SQLAlchemy
+- MySQL
 - PyMySQL
-- Python-dotenv
+- python-dotenv
 - Uvicorn
 - Swagger UI
-- Git
-- GitHub
 
 ## Project Structure
 
-```text
 FastAPI-Employee-Management/
 │
 ├── app/
@@ -40,246 +43,64 @@ FastAPI-Employee-Management/
 │
 ├── screenshots/
 ├── .env
+├── .env.example
 ├── .gitignore
 ├── requirements.txt
 └── README.md
-````
 
-## Task 1 - Employee CRUD
-
-Task 1 implemented employee CRUD operations using FastAPI.
-
-### API Endpoints
-
-```text
-POST   /employees
-GET    /employees
-GET    /employees/{employee_id}
-PUT    /employees/{employee_id}
-DELETE /employees/{employee_id}
-GET    /health
-```
-
-### Employee Fields
-
-* `id`
-* `name`
-* `email`
-* `department`
-* `primary_skill`
-* `location`
-* `work_mode`
-* `is_active`
-* `created_at`
-
-### Features
-
-* Create employee
-* View all employees
-* View employee by ID
-* Update employee
-* Delete employee
-* Email validation
-* Work mode validation
-* Employee ID validation
-* Health check
-
-## Task 2 - MySQL and SQLAlchemy
-
-Task 2 replaced temporary storage with a MySQL database.
-
-### Database
-
-```text
-employee_db
-```
-
-### Table
-
-```text
-employees
-```
-
-SQLAlchemy ORM is used for database operations.
-
-### Features
-
-* MySQL database connection
-* SQLAlchemy ORM
-* Persistent employee records
-* Auto-generated employee IDs
-* Unique email validation
-* Case-insensitive email checking
-* Database rollback on failed operations
-* Database session management
-* Created date and time
-* CRUD operations using MySQL
-
-Employee records remain available after restarting the FastAPI application.
-
-## Task 3 - Search, Filtering and Pagination
-
-Task 3 added search, filtering and pagination to:
-
-```text
-GET /employees
-```
-
-### Query Parameters
-
-| Parameter    | Description                                   | Default |
-| ------------ | --------------------------------------------- | ------- |
-| `search`     | Partial case-insensitive employee name search | None    |
-| `department` | Filter by department                          | None    |
-| `work_mode`  | Filter by WFH or WFO                          | None    |
-| `is_active`  | Filter by active status                       | None    |
-| `limit`      | Number of records to return                   | 10      |
-| `offset`     | Number of records to skip                     | 0       |
-
-### Search
-
-Search employees by name using partial and case-insensitive matching.
-
-Example:
-
-```text
-GET /employees?search=che
-```
-
-### Department Filter
-
-Example:
-
-```text
-GET /employees?department=Development
-```
-
-### Work Mode Filter
-
-Allowed values:
-
-```text
-WFH
-WFO
-```
-
-Example:
-
-```text
-GET /employees?work_mode=WFH
-```
-
-### Active Status Filter
-
-Example:
-
-```text
-GET /employees?is_active=true
-```
-
-or:
-
-```text
-GET /employees?is_active=false
-```
-
-### Combined Filters
-
-Multiple filters can be used together.
-
-Example:
-
-```text
-GET /employees?department=Engineering&work_mode=WFH
-```
-
-### Pagination
-
-Pagination uses `limit` and `offset`.
-
-Example:
-
-```text
-GET /employees?limit=3&offset=0
-```
-
-Next page:
-
-```text
-GET /employees?limit=3&offset=3
-```
-
-The API returns:
-
-* Total matching records
-* Limit
-* Offset
-* Employee items
-
-Example response:
-
-```json
-{
-  "total": 8,
-  "limit": 3,
-  "offset": 0,
-  "items": []
-}
-```
-
-### No Matching Records
-
-If there are no matching employees, the API returns HTTP `200` with an empty `items` list.
-
-Example:
-
-```text
-GET /employees?search=lohith
-```
-
-Response:
-
-```json
-{
-  "total": 0,
-  "limit": 10,
-  "offset": 0,
-  "items": []
-}
-```
-
-### Offset Beyond Matching Records
-
-If the offset exceeds the matching records, the API returns an empty `items` list while retaining the correct `total`.
-### SQLAlchemy Query
-
-Search, filtering, sorting and pagination are performed through SQLAlchemy database queries.
-
-The application does not load all employees into a Python list for filtering.
-
-Employees are returned in ascending order by employee ID.
+## Employee Fields
+
+| Field | Description |
+|---|---|
+| id | Auto-generated ID |
+| name | Employee name |
+| email | Unique email |
+| department | Department |
+| primary_skill | Primary skill |
+| location | Employee location |
+| work_mode | WFH or WFO |
+| is_active | Active status |
+| created_at | Creation date and time |
+
+## Database Setup
+
+Create the MySQL database:
+
+```sql
+CREATE DATABASE employee_db;
+Select the database:
+```sql
+USE employee_db;
+The `employees` table is automatically created when FastAPI starts.
+Check the table:
+```sql
+SHOW TABLES;
+
+## Environment Configuration
+
+Create a `.env` file in the project root:
+```env
+DATABASE_URL=mysql+pymysql://root:NewPassword%40123@localhost:3306/employee_db
+
+## Installation
+Open PowerShell:
+cd "C:\Users\User\Desktop\FastAPI-Employee-Management"
+Install dependencies:
+python -m pip install -r requirements.txt
+
+## Run Application
+python -m uvicorn app.main:app --reload
+Application:
+http://127.0.0.1:8000
+Swagger UI:
+http://127.0.0.1:8000/docs
 
 ## API Endpoints
-
 ### Home
-
-```text
 GET /
-```
-
-Response:
-
-```json
-{
-  "message": "Employee Management API is running"
-}
-```
-
 ### Health Check
 
-```text
 GET /health
-```
 
 Response:
 
@@ -296,139 +117,195 @@ Response:
 POST /employees
 ```
 
-Example request:
+Example:
 
 ```json
 {
-  "name": "Arun",
-  "email": "arun1@gmail.com",
-  "department": "Sales",
-  "primary_skill": "Marketing",
-  "location": "Bengaluru",
+  "name": "Chethan",
+  "email": "chethan@gmail.com",
+  "department": "Development",
+  "primary_skill": "Python",
+  "location": "Mandya",
   "work_mode": "WFO",
   "is_active": true
 }
 ```
 
-Successful creation returns:
-
-```text
+Returns:
 201 Created
-```
-### Get Employee
-```text
+
+
+### Get Employees
+Supported query parameters:
+
+| Parameter | Description | Default |
+|---|---|---|
+| search | Search employee name | None |
+| department | Department filter | None |
+| work_mode | WFH or WFO | None |
+| is_active | Active status | None |
+| limit | Records per page | 10 |
+| offset | Records to skip | 0 |
+
+## Search
+
+Example:
+GET /employees?search=cha
+## Filters
+
+Department:
+GET /employees?department=Development
+Work mode:
+GET /employees?work_mode=WFH
+Active employees:
+GET /employees?is_active=true
+Inactive employees:
+GET /employees?is_active=false
+
+## Combined Filters
+GET /employees?search=cha&department=Development&work_mode=WFO&is_active=true
+All supplied filters are applied together.
+
+## Pagination
+
+Example:
+GET /employees?limit=5&offset=0
+Next page:
+GET /employees?limit=5&offset=5
+Rules:
+limit: 1-100
+offset: 0 or greater
+Invalid offset:
+GET /employees?limit=10&offset=-1
+returns:
+422 Unprocessable Entity
+Employees are returned in ascending ID order.
+
+## Response Format
+
+```json
+{
+  "total": 2,
+  "limit": 10,
+  "offset": 0,
+  "items": []
+}
+If there are no matching employees:
+
+```json
+{
+  "total": 0,
+  "limit": 10,
+  "offset": 0,
+  "items": []
+}
+The API returns `200 OK` for no matches.
+
+## Get Employee by ID
 GET /employees/{employee_id}
-```
+
+
 Example:
-```text
-GET /employees/6
-```
-### Update Employee
-```text
+GET /employees/1
+
+Returns `404` if the employee does not exist.
+
+## Update Employee
 PUT /employees/{employee_id}
-```
 Example:
+
 ```json
 {
   "department": "Development",
-  "is_active": true
+  "is_active": false
 }
-```
-The `created_at` value is preserved during updates.
-### Delete Employee
-```text
+Only supplied fields are updated.
+`created_at` is preserved.
+
+## Delete Employee
 DELETE /employees/{employee_id}
-```
-Example response:
-
-```json
-{
-  "message": "Employee deleted successfully",
-  "id": 6
-}
-## Environment Variables
-Create a `.env` file in the project root:
-DATABASE_URL=mysql+pymysql://root:NewPassword@123@localhost:3306/employee_db```
 
 
-## Installation
-Clone the repository:
-git clone https://github.com/chethan-hero/FastAPI-Employee-Management.git
-Open the project:
-cd FastAPI-Employee-Management
-Install dependencies:
-python -m pip install -r requirements.txt
-## Run the Application
-Start the FastAPI application:
-python -m uvicorn app.main:app --reload
-Application URL:
+Returns `404` if the employee does not exist.
 
+## Validation
+
+Required text fields cannot contain only spaces:
+- name
+- department
+- primary_skill
+- location
+
+Valid work modes:
+WFH
+WFO
+
+Invalid input returns:
+422 Unprocessable Entity
+
+## Email Validation
+
+Email must be valid and unique.
+Duplicate email:
+409 Conflict
+Email comparison is case-insensitive.
+
+## Database Error Handling
+
+Database errors are not exposed as raw SQL errors.
+The API returns:
 ```text
-http://127.0.0.1:8000
-```
+Database error. Please try again.
+Failed database operations are rolled back.
+## Automatic Table Creation
+The application creates missing tables when it starts:
+```python
+Base.metadata.create_all(bind=engine)
 
-## Swagger UI
-
-Open the following URL in a browser:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-Swagger UI is used to test all API endpoints.
-
-## Testing
-
-The following features were tested using Swagger UI:
-
-* Create employee
-* Get all employees
-* Get employee by ID
-* Update employee
-* Delete employee
-* Health check
-* Employee search
-* Department filter
-* Work mode filter
-* Active status filter
-* Combined filters
-* Pagination
-* No matching records
-* Invalid limit
-* Invalid offset
-* Invalid work mode
+This allows a fresh `employee_db` database to create the `employees` table automatically.
 
 ## Screenshots
+- Create employee
+- Search
+- Filters
+- Combined filters
+- Pagination
+- No matches
+- Invalid offset
+- Validation errors
+## Learning Note
+This project helped me learn:
 
-Swagger UI screenshots are stored in the `screenshots` folder.
-
-Task 3 screenshots include:
-
-* Search
-* Department filter
-* Work mode filter
-* Active status filter
-* Combined filters
-* Pagination
-* No matching records
-* Invalid offset
+- FastAPI REST API development
+- Pydantic validation
+- MySQL connectivity
+- SQLAlchemy ORM
+- CRUD operations
+- Search and filtering
+- Pagination
+- Error handling
+- Database transactions
+- Swagger UI
+- Git and GitHub
 
 ## Git Commands
-
-Check status:
 git status
 Add changes:
 git add .
-Commit changes:
-git commit -m "Complete Task 1 Task 2 and Task 3"
-Push changes:
+git commit -m "Fix Task 3 validation and database handling"
+Push:
 git push origin main
-## GitHub Repository
 
-[https://github.com/chethan-hero/FastAPI-Employee-Management](https://github.com/chethan-hero/FastAPI-Employee-Management)
+.gitignore` should contain:
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
 
-## Conclusion
+Summary
 
-Tasks 1, 2 and 3 of the FastAPI Employee Management project have been completed.
+Task 3 extends the Employee Management API with database-backed search, filtering, and pagination while preserving the existing CRUD functionality from Task 2. The API now supports partial and case-insensitive name search, department filtering, WFH/WFO filtering, active-status filtering, combined filters, deterministic ID ordering, and limit/offset pagination using SQLAlchemy queries.
 
-The application provides employee CRUD operations, MySQL database persistence, validation, search, filtering and pagination using FastAPI and SQLAlchemy.
+
+
