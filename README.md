@@ -31,7 +31,6 @@ A REST API for managing employee records using FastAPI, MySQL, SQLAlchemy, and P
 
 ## Project Structure
 
-```text
 FastAPI-Employee-Management/
 │
 ├── app/
@@ -48,7 +47,6 @@ FastAPI-Employee-Management/
 ├── .gitignore
 ├── requirements.txt
 └── README.md
-
 
 ## Employee Fields
 
@@ -308,6 +306,3 @@ __pycache__/
 Summary
 
 Task 3 extends the Employee Management API with database-backed search, filtering, and pagination while preserving the existing CRUD functionality from Task 2. The API now supports partial and case-insensitive name search, department filtering, WFH/WFO filtering, active-status filtering, combined filters, deterministic ID ordering, and limit/offset pagination using SQLAlchemy queries.
-
-
-
