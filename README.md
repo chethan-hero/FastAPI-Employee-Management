@@ -1,4 +1,15 @@
+````markdown
 # FastAPI Employee Management API
+
+## Project Overview
+
+This project is a FastAPI backend application developed to manage employee records.
+
+The project was completed in three tasks:
+
+- Task 1 - Employee CRUD using Python list
+- Task 2 - MySQL database integration using SQLAlchemy
+- Task 3 - Search, filtering and pagination
 
 ## Technologies Used
 
