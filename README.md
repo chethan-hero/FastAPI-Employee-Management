@@ -1,7 +1,9 @@
 # FastAPI Employee Management API
+
 A REST API for managing employee records using FastAPI, MySQL, SQLAlchemy, and Pydantic.
 
 ## Features
+
 - Employee CRUD operations
 - MySQL database integration
 - SQLAlchemy ORM
@@ -31,6 +33,7 @@ A REST API for managing employee records using FastAPI, MySQL, SQLAlchemy, and P
 
 ## Project Structure
 
+```text
 FastAPI-Employee-Management/
 │
 ├── app/
@@ -47,6 +50,7 @@ FastAPI-Employee-Management/
 ├── .gitignore
 ├── requirements.txt
 └── README.md
+```
 
 ## Employee Fields
 
@@ -68,42 +72,76 @@ Create the MySQL database:
 
 ```sql
 CREATE DATABASE employee_db;
+```
+
 Select the database:
+
 ```sql
 USE employee_db;
+```
+
 The `employees` table is automatically created when FastAPI starts.
+
 Check the table:
+
 ```sql
 SHOW TABLES;
+```
 
 ## Environment Configuration
 
 Create a `.env` file in the project root:
 ```env
+DATABASE_URL=mysql+pymysql://root:NewPassword@123@localhost:3306/employee_db
+```
+
+If the password contains `@`, encode it as `%40`.
+
+Example:
+```env
 DATABASE_URL=mysql+pymysql://root:NewPassword%40123@localhost:3306/employee_db
+```
+
+Do not commit `.env` to GitHub.
 
 ## Installation
+
 Open PowerShell:
+
+```powershell
 cd "C:\Users\User\Desktop\FastAPI-Employee-Management"
+```
 Install dependencies:
+```powershell
 python -m pip install -r requirements.txt
+```
 
 ## Run Application
+```powershell
 python -m uvicorn app.main:app --reload
+```
 Application:
+```text
 http://127.0.0.1:8000
+```
 Swagger UI:
+```text
 http://127.0.0.1:8000/docs
+```
 
 ## API Endpoints
-### Home
-GET /
-### Health Check
 
+### Home
+```text
+GET /
+```
+
+### Health Check
+```text
 GET /health
+```
 
 Response:
-
 ```json
 {
   "status": "healthy",
@@ -112,13 +150,11 @@ Response:
 ```
 
 ### Create Employee
-
 ```text
 POST /employees
 ```
 
 Example:
-
 ```json
 {
   "name": "Chethan",
@@ -130,12 +166,16 @@ Example:
   "is_active": true
 }
 ```
-
 Returns:
+```text
 201 Created
-
+```
 
 ### Get Employees
+```text
+GET /employees
+```
+
 Supported query parameters:
 
 | Parameter | Description | Default |
@@ -150,35 +190,61 @@ Supported query parameters:
 ## Search
 
 Example:
+```text
 GET /employees?search=cha
+```
+Search is partial and case-insensitive.
+
 ## Filters
 
 Department:
+```text
 GET /employees?department=Development
+```
 Work mode:
+```text
 GET /employees?work_mode=WFH
+```
 Active employees:
+```text
 GET /employees?is_active=true
+```
 Inactive employees:
+```text
 GET /employees?is_active=false
+```
 
 ## Combined Filters
-GET /employees?search=cha&department=Development&work_mode=WFO&is_active=true
-All supplied filters are applied together.
-
-## Pagination
 
 Example:
+
+```text
+GET /employees?search=cha&department=Development&work_mode=WFO&is_active=true
+```
+All supplied filters are applied together.
+## Pagination
+Example:
+```text
 GET /employees?limit=5&offset=0
+```
 Next page:
+```text
 GET /employees?limit=5&offset=5
+```
 Rules:
+```text
 limit: 1-100
 offset: 0 or greater
+```
 Invalid offset:
+```text
 GET /employees?limit=10&offset=-1
+```
 returns:
+```text
 422 Unprocessable Entity
+```
+
 Employees are returned in ascending ID order.
 
 ## Response Format
@@ -190,6 +256,8 @@ Employees are returned in ascending ID order.
   "offset": 0,
   "items": []
 }
+```
+
 If there are no matching employees:
 
 ```json
@@ -199,72 +267,127 @@ If there are no matching employees:
   "offset": 0,
   "items": []
 }
+```
 The API returns `200 OK` for no matches.
 
 ## Get Employee by ID
+```text
 GET /employees/{employee_id}
-
+```
 
 Example:
+```text
 GET /employees/1
-
+```
 Returns `404` if the employee does not exist.
 
 ## Update Employee
-PUT /employees/{employee_id}
-Example:
 
+```text
+PUT /employees/{employee_id}
+```
+
+Example:
 ```json
 {
   "department": "Development",
   "is_active": false
 }
+```
 Only supplied fields are updated.
 `created_at` is preserved.
 
-## Delete Employee
-DELETE /employees/{employee_id}
+## Null Validation
 
+Explicit `null` values are rejected during update.
+Invalid:
+```json
+{
+  "email": null
+}
+```
+or:
+```json
+{
+  "name": null
+}
+```
+
+Response:
+
+```text
+422 Unprocessable Entity
+```
+
+## Delete Employee
+
+```text
+DELETE /employees/{employee_id}
+```
 
 Returns `404` if the employee does not exist.
 
 ## Validation
 
 Required text fields cannot contain only spaces:
+
 - name
 - department
 - primary_skill
 - location
 
 Valid work modes:
+
+```text
 WFH
 WFO
+```
 
 Invalid input returns:
+
+```text
 422 Unprocessable Entity
+```
 
 ## Email Validation
 
 Email must be valid and unique.
+
 Duplicate email:
+
+```text
 409 Conflict
+```
+
 Email comparison is case-insensitive.
 
 ## Database Error Handling
-
 Database errors are not exposed as raw SQL errors.
 The API returns:
+
 ```text
 Database error. Please try again.
+```
+
 Failed database operations are rolled back.
+
 ## Automatic Table Creation
+
 The application creates missing tables when it starts:
+
 ```python
 Base.metadata.create_all(bind=engine)
+```
 
 This allows a fresh `employee_db` database to create the `employees` table automatically.
 
+
 ## Screenshots
+
+Swagger UI screenshots are stored in the `screenshots` folder.
+
+Important tests include:
+
 - Create employee
 - Search
 - Filters
@@ -273,7 +396,11 @@ This allows a fresh `employee_db` database to create the `employees` table autom
 - No matches
 - Invalid offset
 - Validation errors
+
+Screenshots should show the actual **Execute** response.
+
 ## Learning Note
+
 This project helped me learn:
 
 - FastAPI REST API development
@@ -289,20 +416,39 @@ This project helped me learn:
 - Git and GitHub
 
 ## Git Commands
+Check status:
+```powershell
 git status
+
 Add changes:
+```powershell
 git add .
+
+Commit:
+```powershell
 git commit -m "Fix Task 3 validation and database handling"
+
 Push:
+```powershell
 git push origin main
 
-.gitignore` should contain:
+## Security
+Never commit real database passwords.
+`.gitignore` should contain:
+
 .env
 .venv/
 venv/
 __pycache__/
 *.pyc
+``
 
-Summary
+Use a dummy password in `.env.example`:
 
-Task 3 extends the Employee Management API with database-backed search, filtering, and pagination while preserving the existing CRUD functionality from Task 2. The API now supports partial and case-insensitive name search, department filtering, WFH/WFO filtering, active-status filtering, combined filters, deterministic ID ordering, and limit/offset pagination using SQLAlchemy queries.
+DATABASE_URL=mysql+pymysql://root:NewPassword@123@localhost:3306/employee_db
+
+## Project Status
+**Task 1:** Employee CRUD
+**Task 2:** MySQL + SQLAlchemy integration
+**Task 3:** Search, filtering, and pagination
+**Status:** Completed and ready for testing.
