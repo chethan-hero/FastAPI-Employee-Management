@@ -1,17 +1,16 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-
 from app.models import Employee
 from app.schemas import EmployeeCreate, EmployeeUpdate
 
+DATABASE_ERROR = "Database error. Please try again."
 
 def create_employee(
     db: Session,
     employee_data: EmployeeCreate
 ):
     try:
-        # Case-insensitive email duplicate check
         existing_employee = (
             db.query(Employee)
             .filter(
@@ -26,7 +25,7 @@ def create_employee(
 
         employee = Employee(
             name=employee_data.name,
-            email=employee_data.email,
+            email=employee_data.email.lower(),
             department=employee_data.department,
             primary_skill=employee_data.primary_skill,
             location=employee_data.location,
@@ -44,9 +43,9 @@ def create_employee(
         db.rollback()
         return None, "Email already exists"
 
-    except SQLAlchemyError as exc:
+    except SQLAlchemyError:
         db.rollback()
-        return None, f"Database error: {str(exc)}"
+        return None, DATABASE_ERROR
 
 
 def get_employees(
@@ -59,10 +58,8 @@ def get_employees(
     offset: int = 0
 ):
     try:
-        # Start SQLAlchemy query
         query = db.query(Employee)
 
-        # Search employee name - case insensitive partial match
         if search:
             search = search.strip()
 
@@ -70,29 +67,26 @@ def get_employees(
                 query = query.filter(
                     Employee.name.ilike(f"%{search}%")
                 )
-
-        # Department filter
         if department:
-            query = query.filter(
-                Employee.department == department.strip()
-            )
+            department = department.strip()
 
-        # Work mode filter
+            if department:
+                query = query.filter(
+                    Employee.department == department
+                )
+
         if work_mode:
             query = query.filter(
                 Employee.work_mode == work_mode
             )
 
-        # Active/inactive filter
         if is_active is not None:
             query = query.filter(
                 Employee.is_active == is_active
             )
 
-        # Count matching records BEFORE pagination
         total = query.count()
 
-        # Sort by employee ID ascending
         employees = (
             query
             .order_by(Employee.id.asc())
@@ -103,8 +97,9 @@ def get_employees(
 
         return total, employees, None
 
-    except SQLAlchemyError as exc:
-        return 0, [], f"Database error: {str(exc)}"
+    except SQLAlchemyError:
+        db.rollback()
+        return 0, [], DATABASE_ERROR
 
 
 def get_employee_by_id(
@@ -112,14 +107,20 @@ def get_employee_by_id(
     employee_id: int
 ):
     try:
-        return (
+        employee = (
             db.query(Employee)
             .filter(Employee.id == employee_id)
             .first()
-        ), None
+        )
 
-    except SQLAlchemyError as exc:
-        return None, f"Database error: {str(exc)}"
+        if not employee:
+            return None, "Employee not found"
+
+        return employee, None
+
+    except SQLAlchemyError:
+        db.rollback()
+        return None, DATABASE_ERROR
 
 
 def update_employee(
@@ -134,20 +135,21 @@ def update_employee(
             .first()
         )
 
-        if employee is None:
+        if not employee:
             return None, "Employee not found"
 
         update_data = employee_data.model_dump(
             exclude_unset=True
         )
 
-        # Case-insensitive email duplicate check
+        # Check duplicate email during update
         if "email" in update_data:
+            new_email = update_data["email"].lower()
+
             existing_employee = (
                 db.query(Employee)
                 .filter(
-                    func.lower(Employee.email)
-                    == update_data["email"].lower(),
+                    func.lower(Employee.email) == new_email,
                     Employee.id != employee_id
                 )
                 .first()
@@ -156,11 +158,11 @@ def update_employee(
             if existing_employee:
                 return None, "Email already exists"
 
-        # Update only supplied fields
+            update_data["email"] = new_email
+
         for field, value in update_data.items():
             setattr(employee, field, value)
 
-        # created_at is intentionally NOT changed
         db.commit()
         db.refresh(employee)
 
@@ -170,9 +172,9 @@ def update_employee(
         db.rollback()
         return None, "Email already exists"
 
-    except SQLAlchemyError as exc:
+    except SQLAlchemyError:
         db.rollback()
-        return None, f"Database error: {str(exc)}"
+        return None, DATABASE_ERROR
 
 
 def delete_employee(
@@ -186,7 +188,7 @@ def delete_employee(
             .first()
         )
 
-        if employee is None:
+        if not employee:
             return None, "Employee not found"
 
         db.delete(employee)
@@ -194,6 +196,6 @@ def delete_employee(
 
         return employee, None
 
-    except SQLAlchemyError as exc:
+    except SQLAlchemyError:
         db.rollback()
-        return None, f"Database error: {str(exc)}"
+        return None, DATABASE_ERROR

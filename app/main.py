@@ -1,34 +1,26 @@
-from fastapi import (
-    FastAPI,
-    Depends,
-    HTTPException,
-    Query,
-    status
-)
+from contextlib import asynccontextmanager
 
+from fastapi import FastAPI, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.schemas import (
-    EmployeeCreate,
-    EmployeeUpdate,
-    EmployeeResponse,
-    EmployeeListResponse
-)
+from app.database import Base, engine, get_db
+from app import models
+from app import schemas
+from app import services
 
-from app.services import (
-    create_employee,
-    get_employees,
-    get_employee_by_id,
-    update_employee,
-    delete_employee
-)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create tables automatically on application startup
+    Base.metadata.create_all(bind=engine)
+    yield
 
 
 app = FastAPI(
     title="Employee Management API",
-    description="FastAPI Employee Management API using MySQL and SQLAlchemy",
-    version="3.0.0"
+    description="FastAPI Employee Management System",
+    version="3.0.0",
+    lifespan=lifespan
 )
 
 
@@ -46,22 +38,20 @@ def health_check():
         "message": "Application is running"
     }
 
+
 @app.post(
     "/employees",
-    response_model=EmployeeResponse,
+    response_model=schemas.EmployeeResponse,
     status_code=status.HTTP_201_CREATED
 )
-def create_employee_api(
-    employee: EmployeeCreate,
+def create_employee(
+    employee: schemas.EmployeeCreate,
     db: Session = Depends(get_db)
 ):
-    new_employee, error = create_employee(
-        db,
-        employee
-    )
+    created_employee, error = services.create_employee(db, employee)
 
     if error:
-        if "Email already exists" in error:
+        if error == "Email already exists":
             raise HTTPException(
                 status_code=409,
                 detail=error
@@ -72,49 +62,22 @@ def create_employee_api(
             detail=error
         )
 
-    return new_employee
+    return created_employee
+
 
 @app.get(
     "/employees",
-    response_model=EmployeeListResponse
+    response_model=schemas.EmployeeListResponse
 )
-def list_employees(
-    search: str | None = Query(
-        default=None,
-        description="Search employee name using partial, case-insensitive matching"
-    ),
-
-    department: str | None = Query(
-        default=None,
-        description="Filter employees by department"
-    ),
-
-    work_mode: str | None = Query(
-        default=None,
-        description="Filter by work mode: WFH or WFO"
-    ),
-
-    is_active: bool | None = Query(
-        default=None,
-        description="Filter by active status: true or false"
-    ),
-
-    limit: int = Query(
-        default=10,
-        ge=1,
-        le=100,
-        description="Maximum number of employees to return (1-100)"
-    ),
-
-    offset: int = Query(
-        default=0,
-        ge=0,
-        description="Number of matching employees to skip"
-    ),
-
+def get_employees(
+    search: str | None = Query(None),
+    department: str | None = Query(None),
+    work_mode: str | None = Query(None),
+    is_active: bool | None = Query(None),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db)
 ):
-    # Validate work mode
     if work_mode is not None:
         work_mode = work_mode.strip().upper()
 
@@ -124,7 +87,7 @@ def list_employees(
                 detail="work_mode must be either WFH or WFO"
             )
 
-    total, employees, error = get_employees(
+    total, employees, error = services.get_employees(
         db=db,
         search=search,
         department=department,
@@ -147,9 +110,10 @@ def list_employees(
         "items": employees
     }
 
+
 @app.get(
     "/employees/{employee_id}",
-    response_model=EmployeeResponse
+    response_model=schemas.EmployeeResponse
 )
 def get_employee(
     employee_id: int,
@@ -161,32 +125,33 @@ def get_employee(
             detail="Employee ID must be greater than 0"
         )
 
-    employee, error = get_employee_by_id(
+    employee, error = services.get_employee_by_id(
         db,
         employee_id
     )
 
     if error:
+        if error == "Employee not found":
+            raise HTTPException(
+                status_code=404,
+                detail=error
+            )
+
         raise HTTPException(
             status_code=500,
             detail=error
         )
 
-    if employee is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Employee not found"
-        )
-
     return employee
+
 
 @app.put(
     "/employees/{employee_id}",
-    response_model=EmployeeResponse
+    response_model=schemas.EmployeeResponse
 )
-def update_employee_api(
+def update_employee(
     employee_id: int,
-    employee: EmployeeUpdate,
+    employee: schemas.EmployeeUpdate,
     db: Session = Depends(get_db)
 ):
     if employee_id <= 0:
@@ -195,7 +160,7 @@ def update_employee_api(
             detail="Employee ID must be greater than 0"
         )
 
-    updated_employee, error = update_employee(
+    updated_employee, error = services.update_employee(
         db,
         employee_id,
         employee
@@ -208,7 +173,7 @@ def update_employee_api(
                 detail=error
             )
 
-        if "Email already exists" in error:
+        if error == "Email already exists":
             raise HTTPException(
                 status_code=409,
                 detail=error
@@ -221,8 +186,9 @@ def update_employee_api(
 
     return updated_employee
 
+
 @app.delete("/employees/{employee_id}")
-def delete_employee_api(
+def delete_employee(
     employee_id: int,
     db: Session = Depends(get_db)
 ):
@@ -232,7 +198,7 @@ def delete_employee_api(
             detail="Employee ID must be greater than 0"
         )
 
-    deleted_employee, error = delete_employee(
+    deleted_employee, error = services.delete_employee(
         db,
         employee_id
     )
@@ -251,5 +217,5 @@ def delete_employee_api(
 
     return {
         "message": "Employee deleted successfully",
-        "id": employee_id
+        "employee": deleted_employee
     }

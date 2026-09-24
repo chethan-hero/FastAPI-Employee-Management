@@ -1,7 +1,12 @@
 from datetime import datetime
 from typing import Optional, List
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    field_validator,
+    model_validator
+)
 
 
 class EmployeeBase(BaseModel):
@@ -22,8 +27,9 @@ class EmployeeBase(BaseModel):
     @classmethod
     def validate_required_text(cls, value: str):
         if not value.strip():
-            raise ValueError("This field cannot be empty or contain only spaces")
-
+            raise ValueError(
+                "This field cannot be empty or contain only spaces"
+            )
         return value.strip()
 
     @field_validator("work_mode")
@@ -32,7 +38,9 @@ class EmployeeBase(BaseModel):
         value = value.strip().upper()
 
         if value not in ["WFH", "WFO"]:
-            raise ValueError("work_mode must be either WFH or WFO")
+            raise ValueError(
+                "work_mode must be either WFH or WFO"
+            )
 
         return value
 
@@ -50,6 +58,18 @@ class EmployeeUpdate(BaseModel):
     work_mode: Optional[str] = None
     is_active: Optional[bool] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def reject_null_values(cls, data):
+        if isinstance(data, dict):
+            for field, value in data.items():
+                if value is None:
+                    raise ValueError(
+                        f"{field} cannot be null"
+                    )
+
+        return data
+
     @field_validator(
         "name",
         "department",
@@ -63,7 +83,6 @@ class EmployeeUpdate(BaseModel):
                 raise ValueError(
                     "This field cannot be empty or contain only spaces"
                 )
-
             return value.strip()
 
         return value
@@ -75,7 +94,9 @@ class EmployeeUpdate(BaseModel):
             value = value.strip().upper()
 
             if value not in ["WFH", "WFO"]:
-                raise ValueError("work_mode must be either WFH or WFO")
+                raise ValueError(
+                    "work_mode must be either WFH or WFO"
+                )
 
             return value
 
