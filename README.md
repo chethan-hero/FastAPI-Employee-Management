@@ -1,27 +1,32 @@
-# Employee Management API
-
-A FastAPI backend application for managing employee records using **Python, FastAPI, MySQL, and SQLAlchemy**.
+# FastAPI Employee Management API
 
 ## Project Overview
 
-This project implements an Employee Management REST API.
+This project is a FastAPI backend application for managing employee records.
 
-In Task 2, employee records are stored in a **MySQL database** using **SQLAlchemy ORM**. Employee data remains available even after restarting the FastAPI application.
+The project includes:
+
+- Employee CRUD operations
+- MySQL database integration
+- SQLAlchemy ORM
+- Employee search
+- Employee filtering
+- Pagination
+- Request validation
+- Swagger UI documentation
 
 ## Technologies Used
 
-- Python
+- Python 3.12
 - FastAPI
 - Pydantic
-- SQLAlchemy
 - MySQL
+- SQLAlchemy
 - PyMySQL
+- Python-dotenv
 - Uvicorn
-- python-dotenv
 - Swagger UI
-- Git
-- GitHub
-- Visual Studio Code
+- Git and GitHub
 
 ## Project Structure
 
@@ -39,181 +44,227 @@ FastAPI-Employee-Management/
 ├── screenshots/
 │
 ├── .env
-├── .env.example
 ├── .gitignore
 ├── requirements.txt
 └── README.md
-```
+Employee Fields
+id - Auto-generated employee ID
+name - Employee name
+email - Unique employee email
+department - Employee department
+primary_skill - Primary skill
+location - Employee location
+work_mode - WFH or WFO
+is_active - Employee active status
+created_at - Employee creation date and time
+API Endpoints
+Home
+GET /
+Health Check
+GET /health
+Create Employee
+POST /employees
+Get All Employees
+GET /employees
+Get Employee by ID
+GET /employees/{employee_id}
+Update Employee
+PUT /employees/{employee_id}
+Delete Employee
+DELETE /employees/{employee_id}
 
-## Employee Fields
+Task 3 - Search, Filtering and Pagination
 
-| Field | Description |
-|---|---|
-| `id` | Automatically generated employee ID |
-| `name` | Employee name |
-| `email` | Employee email |
-| `department` | Employee department |
-| `primary_skill` | Primary technical skill |
-| `location` | Employee location |
-| `work_mode` | WFH or WFO |
-| `is_active` | Employee active status |
-| `created_at` | Employee creation date and time |
+The GET /employees API supports search, filtering, and pagination.
 
-## API Endpoints
+Query Parameters
+Parameter	Description	Default
+search	Partial case-insensitive employee name search	None
+department	Filter by department	None
+work_mode	Filter by WFH or WFO	None
+is_active	Filter by active status	None
+limit	Number of records to return	10
+offset	Number of records to skip	0
+Search
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/health` | Check application status |
-| POST | `/employees` | Create an employee |
-| GET | `/employees` | Get all employees |
-| GET | `/employees/{employee_id}` | Get employee by ID |
-| PUT | `/employees/{employee_id}` | Update employee |
-| DELETE | `/employees/{employee_id}` | Delete employee |
-
-## MySQL Database Setup
-
-Create the database in MySQL:
-
-```sql
-CREATE DATABASE IF NOT EXISTS employee_db;
-```
-
-Select the database:
-
-```sql
-USE employee_db;
-```
-
-The `employees` table is created automatically by SQLAlchemy when the FastAPI application starts successfully.
-
-Check the tables:
-
-```sql
-SHOW TABLES;
-```
-
-Check employee records:
-
-```sql
-SELECT * FROM employees;
-```
-
-## Environment Configuration
-
-Create a `.env` file in the project root directory.
+Search employee names using partial and case-insensitive matching.
 
 Example:
 
-```env
+GET /employees?search=che
+Department Filter
+
+Example:
+
+GET /employees?department=Development
+Work Mode Filter
+
+Allowed values:
+
+WFH
+WFO
+
+Example:
+
+GET /employees?work_mode=WFH
+Active Status Filter
+
+Example:
+
+GET /employees?is_active=true
+
+or
+
+GET /employees?is_active=false
+Combined Filters
+
+Multiple filters can be used together.
+
+Example:
+
+GET /employees?department=Engineering&work_mode=WFH
+Pagination
+
+Pagination uses limit and offset.
+
+Example:
+
+GET /employees?limit=3&offset=0
+
+Next page:
+
+GET /employees?limit=3&offset=3
+
+The total value shows the total number of matching records before pagination.
+
+Response Format
+{
+  "total": 8,
+  "limit": 3,
+  "offset": 0,
+  "items": []
+}
+No Matching Records
+
+If no employee matches the search or filters, the API returns HTTP 200.
+
+Example:
+
+GET /employees?search=ZZZZZ
+
+Response:
+
+{
+  "total": 0,
+  "limit": 10,
+  "offset": 0,
+  "items": []
+}
+Validation
+Invalid Limit
+
+limit must be between 1 and 100.
+
+GET /employees?limit=0
+Invalid Offset
+
+offset cannot be negative.
+
+GET /employees?offset=-1
+Invalid Work Mode
+
+Only WFH and WFO are accepted.
+
+GET /employees?work_mode=REMOTE
+Database
+
+The application uses MySQL with SQLAlchemy.
+
+Database:
+
+employee_db
+
+Table:
+
+employees
+
+Employee records are stored permanently in MySQL and remain available after restarting the application.
+
+Environment Variables
+
+Create a .env file in the project root:
+
 DATABASE_URL=mysql+pymysql://root:YOUR_PASSWORD@localhost:3306/employee_db
-```
 
-If the MySQL password contains special characters, URL-encode them.
+Replace YOUR_PASSWORD with your MySQL password.
 
-For example:
+Installation
 
-```text
-@
-```
+Clone the repository:
 
-must be written as:
+git clone https://github.com/chethan-hero/FastAPI-Employee-Management.git
 
-```text
-%40
-```
+Open the project:
 
-Example:
+cd FastAPI-Employee-Management
 
-```env
-DATABASE_URL=mysql+pymysql://root:MySql%4012345@localhost:3306/employee_db
-```
+Install dependencies:
 
-The `.env` file should not be uploaded to GitHub.
-
-## Install Dependencies
-
-Open PowerShell in the project directory:
-
-```powershell
-cd "C:\Users\User\Desktop\FastAPI-Employee-Management"
-```
-
-Create a virtual environment:
-
-```powershell
-python -m venv .venv
-```
-
-Activate the virtual environment:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-Install the required packages:
-
-```powershell
 python -m pip install -r requirements.txt
-```
-
-## Run the Application
-
-Start FastAPI using:
-
-```powershell
+Run the Application
 python -m uvicorn app.main:app --reload
-```
 
-The application will run at:
+Application URL:
 
-```text
 http://127.0.0.1:8000
-```
+Swagger UI
 
-## Swagger UI
+Open:
 
-Open the following URL in a browser:
-
-```text
 http://127.0.0.1:8000/docs
-```
 
-Swagger UI can be used to test all API endpoints.
+Swagger UI is used to test all API endpoints.
 
-```powershell
-git commit -m "Complete Task 2 MySQL SQLAlchemy implementation"
+Testing
 
-Set the main branch:
+The following Task 3 tests were performed:
 
-```powershell
-git branch -M main
+Employee search
+Department filtering
+Work mode filtering
+Active status filtering
+Combined filters
+Pagination
+No matching records
+Invalid limit
+Invalid offset
+Invalid work mode
+What I Learned
+FastAPI API development
+Query parameters
+Search and filtering
+Pagination using limit and offset
+SQLAlchemy database queries
+MySQL database integration
+Pydantic validation
+Swagger UI testing
+Git and GitHub
+Difficulties Faced
+Connecting FastAPI with MySQL
+Configuring SQLAlchemy
+Handling database sessions
+Implementing search and filters
+Implementing pagination
+Validating query parameters
+Testing API responses in Swagger UI
+Managing screenshots with Git
+Git Commands
+git status
+git add .
+git commit -m "Complete Task 3 employee search filter and pagination"
+git push origin main
+GitHub Repository
+https://github.com/chethan-hero/FastAPI-Employee-Management
+Conclusion
 
-Add the GitHub repository:
-
-```powershell
-git remote add origin https://github.com/chethan-hero/FastAPI-Employee-Management.git
-Push the project:
-
-```powershell
-git push -u origin main
-```
-
-## Security
-
-The `.env` file contains database credentials and should not be committed to GitHub.
-
-The `.gitignore` file includes:
-
-```gitignore
-.env
-.venv/
-venv/
-__pycache__/
-*.py[cod]
-.vscode/
-.idea/
-.pytest_cache/
-.DS_Store
-Thumbs.db
-```
-
+The Employee Management API supports employee CRUD operations, MySQL database persistence, employee search, filtering, and pagination using FastAPI and SQLAlchemy.
