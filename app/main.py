@@ -1,82 +1,35 @@
-from fastapi import Depends, FastAPI, HTTPException, Path, Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from sqlalchemy.exc import SQLAlchemyError
+from fastapi import (
+    FastAPI,
+    Depends,
+    HTTPException,
+    Query,
+    status
+)
+
 from sqlalchemy.orm import Session
 
-from . import models  # noqa: F401
-from .database import Base, engine, get_db
-from .schemas import EmployeeCreate, EmployeeResponse, EmployeeUpdate
-from .services import (
-    DuplicateEmailError,
-    EmployeeNotFoundError,
+from app.database import get_db
+from app.schemas import (
+    EmployeeCreate,
+    EmployeeUpdate,
+    EmployeeResponse,
+    EmployeeListResponse
+)
+
+from app.services import (
     create_employee,
-    delete_employee,
-    get_all_employees,
-    get_employee,
+    get_employees,
+    get_employee_by_id,
     update_employee,
+    delete_employee
 )
 
 
 app = FastAPI(
     title="Employee Management API",
-    description="Employee Management API using FastAPI, MySQL and SQLAlchemy",
-    version="2.0.0",
+    description="FastAPI Employee Management API using MySQL and SQLAlchemy",
+    version="3.0.0"
 )
-
-
-@app.on_event("startup")
-def startup() -> None:
-    try:
-        Base.metadata.create_all(bind=engine)
-    except SQLAlchemyError as exc:
-        # Keep the API running, but show the real database problem
-        # in the terminal for debugging.
-        print(f"DATABASE STARTUP ERROR: {exc}")
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(
-    request: Request,
-    exc: RequestValidationError,
-) -> JSONResponse:
-    errors = []
-
-    for error in exc.errors():
-        field = ".".join(str(item) for item in error["loc"])
-        message = error["msg"]
-
-        errors.append(
-            {
-                "field": field,
-                "message": message,
-            }
-        )
-
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "detail": "Validation error.",
-            "errors": errors,
-        },
-    )
-
-
-@app.exception_handler(SQLAlchemyError)
-async def sqlalchemy_exception_handler(
-    request: Request,
-    exc: SQLAlchemyError,
-) -> JSONResponse:
-    # Print the actual database error in the Uvicorn terminal.
-    # Do not expose database credentials/details to API users.
-    print(f"DATABASE ERROR: {exc}")
-
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "detail": "Database operation failed. Please check the MySQL connection and try again."
-        },
-    )
 
 
 @app.get("/")
@@ -90,127 +43,213 @@ def home():
 def health_check():
     return {
         "status": "healthy",
-        "message": "Application is running",
+        "message": "Application is running"
     }
-
 
 @app.post(
     "/employees",
     response_model=EmployeeResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_201_CREATED
 )
 def create_employee_api(
     employee: EmployeeCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db)
 ):
-    try:
-        return create_employee(db, employee)
+    new_employee, error = create_employee(
+        db,
+        employee
+    )
 
-    except DuplicateEmailError as exc:
+    if error:
+        if "Email already exists" in error:
+            raise HTTPException(
+                status_code=409,
+                detail=error
+            )
+
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+            status_code=500,
+            detail=error
+        )
 
+    return new_employee
 
 @app.get(
     "/employees",
-    response_model=list[EmployeeResponse],
+    response_model=EmployeeListResponse
 )
-def get_employees(
-    db: Session = Depends(get_db),
-):
-    return get_all_employees(db)
+def list_employees(
+    search: str | None = Query(
+        default=None,
+        description="Search employee name using partial, case-insensitive matching"
+    ),
 
+    department: str | None = Query(
+        default=None,
+        description="Filter employees by department"
+    ),
+
+    work_mode: str | None = Query(
+        default=None,
+        description="Filter by work mode: WFH or WFO"
+    ),
+
+    is_active: bool | None = Query(
+        default=None,
+        description="Filter by active status: true or false"
+    ),
+
+    limit: int = Query(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum number of employees to return (1-100)"
+    ),
+
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Number of matching employees to skip"
+    ),
+
+    db: Session = Depends(get_db)
+):
+    # Validate work mode
+    if work_mode is not None:
+        work_mode = work_mode.strip().upper()
+
+        if work_mode not in ["WFH", "WFO"]:
+            raise HTTPException(
+                status_code=422,
+                detail="work_mode must be either WFH or WFO"
+            )
+
+    total, employees, error = get_employees(
+        db=db,
+        search=search,
+        department=department,
+        work_mode=work_mode,
+        is_active=is_active,
+        limit=limit,
+        offset=offset
+    )
+
+    if error:
+        raise HTTPException(
+            status_code=500,
+            detail=error
+        )
+
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "items": employees
+    }
 
 @app.get(
     "/employees/{employee_id}",
-    response_model=EmployeeResponse,
+    response_model=EmployeeResponse
 )
-def get_employee_by_id(
-    employee_id: int = Path(
-        ...,
-        description="Employee ID must be greater than 0",
-    ),
-    db: Session = Depends(get_db),
+def get_employee(
+    employee_id: int,
+    db: Session = Depends(get_db)
 ):
     if employee_id <= 0:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Employee ID must be greater than 0.",
+            status_code=422,
+            detail="Employee ID must be greater than 0"
         )
 
-    try:
-        return get_employee(db, employee_id)
+    employee, error = get_employee_by_id(
+        db,
+        employee_id
+    )
 
-    except EmployeeNotFoundError as exc:
+    if error:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
+            status_code=500,
+            detail=error
+        )
 
+    if employee is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Employee not found"
+        )
+
+    return employee
 
 @app.put(
     "/employees/{employee_id}",
-    response_model=EmployeeResponse,
+    response_model=EmployeeResponse
 )
 def update_employee_api(
+    employee_id: int,
     employee: EmployeeUpdate,
-    employee_id: int = Path(
-        ...,
-        description="Employee ID must be greater than 0",
-    ),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db)
 ):
     if employee_id <= 0:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Employee ID must be greater than 0.",
+            status_code=422,
+            detail="Employee ID must be greater than 0"
         )
 
-    try:
-        return update_employee(
-            db,
-            employee_id,
-            employee,
+    updated_employee, error = update_employee(
+        db,
+        employee_id,
+        employee
+    )
+
+    if error:
+        if error == "Employee not found":
+            raise HTTPException(
+                status_code=404,
+                detail=error
+            )
+
+        if "Email already exists" in error:
+            raise HTTPException(
+                status_code=409,
+                detail=error
+            )
+
+        raise HTTPException(
+            status_code=500,
+            detail=error
         )
 
-    except EmployeeNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
-
-    except DuplicateEmailError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
-
+    return updated_employee
 
 @app.delete("/employees/{employee_id}")
 def delete_employee_api(
-    employee_id: int = Path(
-        ...,
-        description="Employee ID must be greater than 0",
-    ),
-    db: Session = Depends(get_db),
+    employee_id: int,
+    db: Session = Depends(get_db)
 ):
     if employee_id <= 0:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Employee ID must be greater than 0.",
+            status_code=422,
+            detail="Employee ID must be greater than 0"
         )
 
-    try:
-        delete_employee(db, employee_id)
+    deleted_employee, error = delete_employee(
+        db,
+        employee_id
+    )
 
-        return {
-            "message": "Employee deleted successfully."
-        }
+    if error:
+        if error == "Employee not found":
+            raise HTTPException(
+                status_code=404,
+                detail=error
+            )
 
-    except EmployeeNotFoundError as exc:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
+            status_code=500,
+            detail=error
+        )
+
+    return {
+        "message": "Employee deleted successfully",
+        "id": employee_id
+    }

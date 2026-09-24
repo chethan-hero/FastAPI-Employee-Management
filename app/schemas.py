@@ -1,83 +1,85 @@
 from datetime import datetime
-from typing import Literal
+from typing import Optional, List
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
-
-
-WorkMode = Literal["WFH", "WFO"]
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
-def validate_required_text(value: str) -> str:
-    value = value.strip()
-    if not value:
-        raise ValueError("This field cannot be empty or contain only spaces.")
-    return value
-
-
-class EmployeeCreate(BaseModel):
-    name: str = Field(min_length=1)
+class EmployeeBase(BaseModel):
+    name: str
     email: EmailStr
-    department: str = Field(min_length=1)
-    primary_skill: str = Field(min_length=1)
-    location: str = Field(min_length=1)
-    work_mode: WorkMode
+    department: str
+    primary_skill: str
+    location: str
+    work_mode: str
+    is_active: bool = True
 
-    @field_validator("name", "department", "primary_skill", "location")
-    @classmethod
-    def validate_text_fields(cls, value: str) -> str:
-        return validate_required_text(value)
-
-    @field_validator("email")
-    @classmethod
-    def normalize_email(cls, value: EmailStr) -> str:
-        return str(value).strip().lower()
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "name": "Chethan",
-                "email": "chethan@gmail.com",
-                "department": "Development",
-                "primary_skill": "Python",
-                "location": "Mandya",
-                "work_mode": "WFO",
-            }
-        }
+    @field_validator(
+        "name",
+        "department",
+        "primary_skill",
+        "location"
     )
+    @classmethod
+    def validate_required_text(cls, value: str):
+        if not value.strip():
+            raise ValueError("This field cannot be empty or contain only spaces")
+
+        return value.strip()
+
+    @field_validator("work_mode")
+    @classmethod
+    def validate_work_mode(cls, value: str):
+        value = value.strip().upper()
+
+        if value not in ["WFH", "WFO"]:
+            raise ValueError("work_mode must be either WFH or WFO")
+
+        return value
+
+
+class EmployeeCreate(EmployeeBase):
+    pass
 
 
 class EmployeeUpdate(BaseModel):
-    name: str = Field(min_length=1)
-    email: EmailStr
-    department: str = Field(min_length=1)
-    primary_skill: str = Field(min_length=1)
-    location: str = Field(min_length=1)
-    work_mode: WorkMode
-    is_active: bool
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    department: Optional[str] = None
+    primary_skill: Optional[str] = None
+    location: Optional[str] = None
+    work_mode: Optional[str] = None
+    is_active: Optional[bool] = None
 
-    @field_validator("name", "department", "primary_skill", "location")
-    @classmethod
-    def validate_text_fields(cls, value: str) -> str:
-        return validate_required_text(value)
-
-    @field_validator("email")
-    @classmethod
-    def normalize_email(cls, value: EmailStr) -> str:
-        return str(value).strip().lower()
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "name": "Chethan Updated",
-                "email": "chethan@gmail.com",
-                "department": "Development",
-                "primary_skill": "Python",
-                "location": "Mandya",
-                "work_mode": "WFO",
-                "is_active": False,
-            }
-        }
+    @field_validator(
+        "name",
+        "department",
+        "primary_skill",
+        "location"
     )
+    @classmethod
+    def validate_optional_text(cls, value):
+        if value is not None:
+            if not value.strip():
+                raise ValueError(
+                    "This field cannot be empty or contain only spaces"
+                )
+
+            return value.strip()
+
+        return value
+
+    @field_validator("work_mode")
+    @classmethod
+    def validate_optional_work_mode(cls, value):
+        if value is not None:
+            value = value.strip().upper()
+
+            if value not in ["WFH", "WFO"]:
+                raise ValueError("work_mode must be either WFH or WFO")
+
+            return value
+
+        return value
 
 
 class EmployeeResponse(BaseModel):
@@ -87,8 +89,16 @@ class EmployeeResponse(BaseModel):
     department: str
     primary_skill: str
     location: str
-    work_mode: WorkMode
+    work_mode: str
     is_active: bool
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
+
+
+class EmployeeListResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    items: List[EmployeeResponse]
