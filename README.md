@@ -29,7 +29,6 @@ A REST API for managing employee records using FastAPI, MySQL, SQLAlchemy, and P
 - Uvicorn
 - Swagger UI
 
-## Project Structure
 
 FastAPI-Employee-Management/
 │
@@ -42,12 +41,12 @@ FastAPI-Employee-Management/
 │   └── services.py
 │
 ├── screenshots/
+│
 ├── .env
 ├── .env.example
 ├── .gitignore
 ├── requirements.txt
 └── README.md
-
 ## Employee Fields
 
 | Field | Description |
