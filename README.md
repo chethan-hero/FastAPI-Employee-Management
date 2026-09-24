@@ -1,15 +1,4 @@
-````markdown
 # FastAPI Employee Management API
-
-## Project Overview
-
-This project is a FastAPI backend application developed to manage employee records.
-
-The project was completed in three tasks:
-
-- Task 1 - Employee CRUD using Python list
-- Task 2 - MySQL database integration using SQLAlchemy
-- Task 3 - Search, filtering and pagination
 
 ## Technologies Used
 
@@ -234,7 +223,7 @@ If there are no matching employees, the API returns HTTP `200` with an empty `it
 Example:
 
 ```text
-GET /employees?search=ZZZZZ
+GET /employees?search=lohith
 ```
 
 Response:
@@ -251,33 +240,6 @@ Response:
 ### Offset Beyond Matching Records
 
 If the offset exceeds the matching records, the API returns an empty `items` list while retaining the correct `total`.
-
-### Validation
-
-`limit` must be between `1` and `100`.
-
-Example:
-
-```text
-GET /employees?limit=0
-```
-
-`offset` cannot be negative.
-
-Example:
-
-```text
-GET /employees?offset=-1
-```
-
-Only `WFH` and `WFO` are accepted.
-
-Example:
-
-```text
-GET /employees?work_mode=REMOTE
-```
-
 ### SQLAlchemy Query
 
 Search, filtering, sorting and pagination are performed through SQLAlchemy database queries.
@@ -342,42 +304,30 @@ Successful creation returns:
 ```text
 201 Created
 ```
-
 ### Get Employee
-
 ```text
 GET /employees/{employee_id}
 ```
-
 Example:
-
 ```text
 GET /employees/6
 ```
-
 ### Update Employee
-
 ```text
 PUT /employees/{employee_id}
 ```
-
 Example:
-
 ```json
 {
   "department": "Development",
   "is_active": true
 }
 ```
-
 The `created_at` value is preserved during updates.
-
 ### Delete Employee
-
 ```text
 DELETE /employees/{employee_id}
 ```
-
 Example response:
 
 ```json
@@ -385,48 +335,21 @@ Example response:
   "message": "Employee deleted successfully",
   "id": 6
 }
-```
-
 ## Environment Variables
-
 Create a `.env` file in the project root:
+DATABASE_URL=mysql+pymysql://root:NewPassword@123@localhost:3306/employee_db```
 
-```env
-DATABASE_URL=mysql+pymysql://root:YOUR_PASSWORD@localhost:3306/employee_db
-```
-
-Replace `YOUR_PASSWORD` with your MySQL password.
-
-Do not commit the `.env` file to GitHub.
 
 ## Installation
-
 Clone the repository:
-
-```bash
 git clone https://github.com/chethan-hero/FastAPI-Employee-Management.git
-```
-
 Open the project:
-
-```bash
 cd FastAPI-Employee-Management
-```
-
 Install dependencies:
-
-```bash
 python -m pip install -r requirements.txt
-```
-
 ## Run the Application
-
 Start the FastAPI application:
-
-```bash
 python -m uvicorn app.main:app --reload
-```
-
 Application URL:
 
 ```text
@@ -479,60 +402,16 @@ Task 3 screenshots include:
 * No matching records
 * Invalid offset
 
-## What I Learned
-
-* FastAPI API development
-* REST API CRUD operations
-* Pydantic validation
-* MySQL database integration
-* SQLAlchemy ORM
-* Database sessions
-* Search functionality
-* Filtering
-* Pagination
-* Query parameters
-* Swagger UI testing
-* Error handling
-* Git and GitHub
-
-## Difficulties Faced
-
-* Connecting FastAPI with MySQL
-* Configuring SQLAlchemy
-* Managing database sessions
-* Handling validation errors
-* Implementing case-insensitive search
-* Combining multiple filters
-* Implementing limit and offset pagination
-* Testing API responses using Swagger UI
-* Managing screenshots and Git
-
 ## Git Commands
 
 Check status:
-
-```bash
 git status
-```
-
 Add changes:
-
-```bash
 git add .
-```
-
 Commit changes:
-
-```bash
 git commit -m "Complete Task 1 Task 2 and Task 3"
-```
-
 Push changes:
-
-```bash
 git push origin main
-```
-
 ## GitHub Repository
 
 [https://github.com/chethan-hero/FastAPI-Employee-Management](https://github.com/chethan-hero/FastAPI-Employee-Management)
@@ -542,6 +421,3 @@ git push origin main
 Tasks 1, 2 and 3 of the FastAPI Employee Management project have been completed.
 
 The application provides employee CRUD operations, MySQL database persistence, validation, search, filtering and pagination using FastAPI and SQLAlchemy.
-
-```
-```
