@@ -92,7 +92,6 @@ SHOW TABLES;
 
 Create a `.env` file in the project root:
 ```env
-DATABASE_URL=mysql+pymysql://root:YOUR_MYSQL_PASSWORD@localhost:3306/employee_db
 ```
 
 ## Installation
