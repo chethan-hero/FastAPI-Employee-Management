@@ -94,6 +94,7 @@ Create a `.env` file in the project root:
 ```env
 DATABASE_URL=mysql+pymysql://root:YOUR_MYSQL_PASSWORD@localhost:3306/employee_db
 ```
+
 ## Installation
 
 Open PowerShell:
@@ -431,7 +432,8 @@ Never commit real database passwords.
 venv/
 __pycache__/
 *.pyc
-``
+
+
 ## Project Status
 **Task 1:** Employee CRUD
 **Task 2:** MySQL + SQLAlchemy integration
