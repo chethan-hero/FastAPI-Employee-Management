@@ -92,18 +92,8 @@ SHOW TABLES;
 
 Create a `.env` file in the project root:
 ```env
-DATABASE_URL=mysql+pymysql://root:NewPassword@123@localhost:3306/employee_db
+DATABASE_URL=mysql+pymysql://root:YOUR_MYSQL_PASSWORD@localhost:3306/employee_db
 ```
-
-If the password contains `@`, encode it as `%40`.
-
-Example:
-```env
-DATABASE_URL=mysql+pymysql://root:NewPassword%40123@localhost:3306/employee_db
-```
-
-Do not commit `.env` to GitHub.
-
 ## Installation
 
 Open PowerShell:
@@ -442,11 +432,6 @@ venv/
 __pycache__/
 *.pyc
 ``
-
-Use a dummy password in `.env.example`:
-
-DATABASE_URL=mysql+pymysql://root:NewPassword@123@localhost:3306/employee_db
-
 ## Project Status
 **Task 1:** Employee CRUD
 **Task 2:** MySQL + SQLAlchemy integration
