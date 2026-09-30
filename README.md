@@ -431,8 +431,7 @@ Never commit real database passwords.
 venv/
 __pycache__/
 *.pyc
-
-
+                      
 ## Project Status
 **Task 1:** Employee CRUD
 **Task 2:** MySQL + SQLAlchemy integration
