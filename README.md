@@ -1,439 +1,560 @@
-# FastAPI Employee Management API
+# FastAPI Employee Management
 
-A REST API for managing employee records using FastAPI, MySQL, SQLAlchemy, and Pydantic.
+## Project Description
 
-## Features
+This project is a FastAPI backend for managing employee records and work items. Employee and work item records are stored in a MySQL database using SQLAlchemy. The records remain available even after the application is restarted.
 
-- Employee CRUD operations
-- MySQL database integration
-- SQLAlchemy ORM
-- Request validation
-- Case-insensitive unique email
-- Search employees by name
-- Filter by department
-- Filter by work mode
-- Filter by active status
-- Pagination using limit and offset
-- Automatic database table creation
-- Database error handling
-- Swagger UI documentation
-- Git and GitHub
+## Technologies Used
 
-## Technologies
-
-- Python 3.12+
+- Python 3.12
 - FastAPI
 - Pydantic
-- SQLAlchemy
 - MySQL
+- SQLAlchemy
 - PyMySQL
-- python-dotenv
 - Uvicorn
 - Swagger UI
-
-## Project Structure
-
-```text
-FastAPI-Employee-Management/
-│
-├── app/
-│   ├── __init__.py
-│   ├── main.py
-│   ├── database.py
-│   ├── models.py
-│   ├── schemas.py
-│   └── services.py
-│
-├── screenshots/
-├── .env
-├── .env.example
-├── .gitignore
-├── requirements.txt
-└── README.md
-```
+- Git
+- GitHub
 
 ## Employee Fields
 
-| Field | Description |
-|---|---|
-| id | Auto-generated ID |
-| name | Employee name |
-| email | Unique email |
-| department | Department |
-| primary_skill | Primary skill |
-| location | Employee location |
-| work_mode | WFH or WFO |
-| is_active | Active status |
-| created_at | Creation date and time |
+- ID
+- Name
+- Email
+- Department
+- Primary Skill
+- Location
+- Work Mode
+- Is Active
+- Created At
 
-## Database Setup
+## Employee APIs
 
-Create the MySQL database:
+- `POST /employees`
+- `GET /employees`
+- `GET /employees/{id}`
+- `PUT /employees/{id}`
+- `DELETE /employees/{id}`
+- `GET /health`
 
-```sql
-CREATE DATABASE employee_db;
-```
+## Employee Validation
 
-Select the database:
+- Required employee fields are validated.
+- Empty or whitespace-only required fields are rejected.
+- Email format is validated.
+- Duplicate email is not allowed.
+- Email uniqueness is checked without treating uppercase and lowercase as different.
+- Work mode accepts `WFH` or `WFO`.
+- Employee ID must be greater than 0.
+- 404 error is returned when an employee is not found.
+- Employee IDs are generated automatically by the database.
+- `is_active` is set to `true` by default.
+- `created_at` is generated when an employee is created and preserved during updates.
+- Failed database changes are rolled back so that later requests can continue working.
 
-```sql
-USE employee_db;
-```
+# Task 3 - Search, Filtering and Pagination
 
-The `employees` table is automatically created when FastAPI starts.
+The `GET /employees` endpoint supports searching, filtering and pagination.
 
-Check the table:
+## Query Parameters
 
-```sql
-SHOW TABLES;
-```
+- `search` - Searches employees by name using partial and case-insensitive matching.
+- `department` - Filters employees by department.
+- `work_mode` - Filters employees by WFH or WFO.
+- `is_active` - Filters employees by active or inactive status.
+- `limit` - Maximum number of records to return. Default is 10. Allowed values are 1 to 100.
+- `offset` - Number of records to skip. Default is 0. Negative values are not allowed.
 
-## Environment Configuration
-
-Create a `.env` file in the project root:
-```env
-```
-
-## Installation
-
-Open PowerShell:
-
-```powershell
-cd "C:\Users\User\Desktop\FastAPI-Employee-Management"
-```
-Install dependencies:
-```powershell
-python -m pip install -r requirements.txt
-```
-
-## Run Application
-```powershell
-python -m uvicorn app.main:app --reload
-```
-Application:
-```text
-http://127.0.0.1:8000
-```
-Swagger UI:
-```text
-http://127.0.0.1:8000/docs
-```
-
-## API Endpoints
-
-### Home
-```text
-GET /
-```
-
-### Health Check
-```text
-GET /health
-```
-
-Response:
-```json
-{
-  "status": "healthy",
-  "message": "Application is running"
-}
-```
-
-### Create Employee
-```text
-POST /employees
-```
-
-Example:
-```json
-{
-  "name": "Chethan",
-  "email": "chethan@gmail.com",
-  "department": "Development",
-  "primary_skill": "Python",
-  "location": "Mandya",
-  "work_mode": "WFO",
-  "is_active": true
-}
-```
-Returns:
-```text
-201 Created
-```
-
-### Get Employees
-```text
-GET /employees
-```
-
-Supported query parameters:
-
-| Parameter | Description | Default |
-|---|---|---|
-| search | Search employee name | None |
-| department | Department filter | None |
-| work_mode | WFH or WFO | None |
-| is_active | Active status | None |
-| limit | Records per page | 10 |
-| offset | Records to skip | 0 |
-
-## Search
-
-Example:
-```text
-GET /employees?search=cha
-```
-Search is partial and case-insensitive.
-
-## Filters
-
-Department:
-```text
-GET /employees?department=Development
-```
-Work mode:
-```text
-GET /employees?work_mode=WFH
-```
-Active employees:
-```text
-GET /employees?is_active=true
-```
-Inactive employees:
-```text
-GET /employees?is_active=false
-```
-
-## Combined Filters
-
-Example:
+## Example Request
 
 ```text
-GET /employees?search=cha&department=Development&work_mode=WFO&is_active=true
-```
-All supplied filters are applied together.
-## Pagination
-Example:
-```text
-GET /employees?limit=5&offset=0
-```
-Next page:
-```text
-GET /employees?limit=5&offset=5
-```
-Rules:
-```text
-limit: 1-100
-offset: 0 or greater
-```
-Invalid offset:
-```text
-GET /employees?limit=10&offset=-1
-```
-returns:
-```text
-422 Unprocessable Entity
-```
+GET /employees?department=Engineering&work_mode=WFH&limit=5&offset=0
 
-Employees are returned in ascending ID order.
+Response Format
 
-## Response Format
+The GET /employees endpoint returns:
 
-```json
 {
   "total": 2,
   "limit": 10,
   "offset": 0,
   "items": []
 }
-```
+total - Number of matching employees before pagination.
+limit - Requested page size.
+offset - Number of records skipped.
+items - List of matching employee records.
+Task 3 Testing
 
-If there are no matching employees:
+The following scenarios were tested using Swagger UI:
 
-```json
+Employee name search
+Department filtering
+Work mode filtering
+Active/inactive filtering
+Combined filters
+Partial name search
+Pagination using limit and offset
+No matching results
+Offset greater than the matching records
+Invalid limit values
+Negative offset validation
+Invalid work mode validation
+
+Search, filtering and pagination are performed using SQLAlchemy queries.
+
+Task 4 - Work Item Management
+
+Task 4 adds work item management to the Employee Management API.
+
+Each work item is assigned to an existing employee using a foreign key relationship.
+
+Work Item Fields
+ID
+Title
+Description
+Employee ID
+Status
+Priority
+Due Date
+Created At
+Assigned Employee
+Work Item Status
+TODO
+IN_PROGRESS
+COMPLETED
+Work Item Priority
+LOW
+MEDIUM
+HIGH
+Work Item APIs
+POST /work-items
+GET /work-items
+GET /work-items/{work_item_id}
+PUT /work-items/{work_item_id}
+DELETE /work-items/{work_item_id}
+Task 4 Query Parameters
+
+The GET /work-items endpoint supports search, filtering and pagination.
+
+search - Searches work items by title using partial and case-insensitive matching.
+employee_id - Filters work items by assigned employee.
+status - Filters work items by status.
+priority - Filters work items by priority.
+limit - Maximum number of records to return. Default is 10. Allowed values are 1 to 100.
+offset - Number of records to skip. Default is 0. Negative values are not allowed.
+Example Request
+GET /work-items?employee_id=2&status=TODO&priority=MEDIUM&limit=10&offset=0
+Work Item Response
+
+Each work item response includes the assigned employee details.
+
 {
-  "total": 0,
+  "id": 1,
+  "title": "Prepare weekly report",
+  "description": "Weekly status report",
+  "employee_id": 2,
+  "status": "TODO",
+  "priority": "MEDIUM",
+  "due_date": "2026-10-05",
+  "created_at": "2026-10-05T10:00:00",
+  "assigned_employee": {
+    "id": 2,
+    "name": "Babitha",
+    "email": "Babitha1@example.com"
+  }
+}
+Work Item List Response
+
+The GET /work-items endpoint returns:
+
+{
+  "total": 4,
   "limit": 10,
   "offset": 0,
   "items": []
 }
-```
-The API returns `200 OK` for no matches.
+total - Number of matching work items before pagination.
+limit - Requested page size.
+offset - Number of records skipped.
+items - List of matching work items.
+Work Item Validation
+Title is required.
+Empty or whitespace-only titles are rejected.
+Employee ID must be greater than 0.
+Assigned employee must exist.
+Status accepts TODO, IN_PROGRESS or COMPLETED.
+Priority accepts LOW, MEDIUM or HIGH.
+Work item ID must be greater than 0.
+404 error is returned when a work item or employee is not found.
+Invalid status or priority returns a validation error.
+Database changes are rolled back when a database error occurs.
+Employee and Work Item Relationship
 
-## Get Employee by ID
-```text
-GET /employees/{employee_id}
-```
+A work item belongs to an employee through the employee_id foreign key.
 
-Example:
-```text
-GET /employees/1
-```
-Returns `404` if the employee does not exist.
+The work_items.employee_id field references the employees.id field.
 
-## Update Employee
+SQLAlchemy relationships connect the Employee and WorkItem models.
 
-```text
-PUT /employees/{employee_id}
-```
+Each employee can have multiple work items.
 
-Example:
-```json
-{
-  "department": "Development",
-  "is_active": false
-}
-```
-Only supplied fields are updated.
-`created_at` is preserved.
+Each work item belongs to one employee.
 
-## Null Validation
+Each work item response also returns the assigned employee's:
 
-Explicit `null` values are rejected during update.
-Invalid:
-```json
-{
-  "email": null
-}
-```
-or:
-```json
-{
-  "name": null
-}
-```
+ID
+Name
+Email
+Task 4 Testing
 
-Response:
+The following scenarios were tested using Swagger UI:
 
-```text
-422 Unprocessable Entity
-```
+Create work item
+Create work item with non-existing employee
+Get all work items
+Get work item by ID
+Search by title
+Filter by employee ID
+Filter by status
+Filter by priority
+Combined filters
+Pagination using limit and offset
+Update work item
+Reassign work item to another employee
+Invalid status validation
+Invalid priority validation
+Blank title validation
+Missing work item validation
+Delete work item
+Verify deleted work item returns 404
+Verify data remains available after application restart
+Verify existing employee APIs continue working
 
-## Delete Employee
+Search, filtering, pagination and ordering are performed using SQLAlchemy queries.
 
-```text
-DELETE /employees/{employee_id}
-```
+Database Setup
 
-Returns `404` if the employee does not exist.
+Create a MySQL database named employee_db.
 
-## Validation
+The application uses SQLAlchemy and PyMySQL to connect to MySQL and perform database operations.
 
-Required text fields cannot contain only spaces:
+The employees and work_items tables are created using the SQLAlchemy models when the application starts.
 
-- name
-- department
-- primary_skill
-- location
+The email field has a database-level unique constraint.
 
-Valid work modes:
+The work_items.employee_id field is a foreign key that references the employees.id field.
 
-```text
-WFH
-WFO
-```
+Database sessions are closed after use.
 
-Invalid input returns:
+Database Configuration
 
-```text
-422 Unprocessable Entity
-```
+Create a local .env file in the project root and add the database connection details.
 
-## Email Validation
+DB_USER=your_username
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=employee_db
 
-Email must be valid and unique.
+A .env.example file is also included with placeholder values for reference.
 
-Duplicate email:
+Do not commit the .env file or database passwords to GitHub.
 
-```text
-409 Conflict
-```
+How to Run
+1. Create Virtual Environment
+python -m venv .venv
+2. Activate Virtual Environment
+.venv\Scripts\Activate.ps1
+3. Install Dependencies
+pip install -r requirements.txt
+4. Start the Application
+python -m uvicorn app.main:app --reload
+5. Open Swagger UI
 
-Email comparison is case-insensitive.
+Open the following URL in a browser:
 
-## Database Error Handling
-Database errors are not exposed as raw SQL errors.
-The API returns:
+http://127.0.0.1:8000/docs
+Project Structure
+FastAPI-Employee-Management/
+│
+├── app/
+│   ├── __init__.py
+│   ├── database.py
+│   ├── main.py
+│   ├── models.py
+│   ├── schemas.py
+│   └── services.py
+│
+├── screenshots/
+│   ├── Task3-Search.png
+│   ├── Task3-Department.png
+│   ├── task3-work mode.png
+│   ├── task3-combined filter test.png
+│   ├── task3-No matching records.png
+│   ├── task3-offset.png
+│   ├── task3-invalid offset (2).png
+│   ├── task3-active status.png
+│   └── Task 4 screenshots
+│
+├── .env
+├── .env.example
+├── .gitignore
+├── README.md
+└── requirements.txt
+Database Tables
+Employees Table
 
-```text
-Database error. Please try again.
-```
+The employees table stores employee information.
 
-Failed database operations are rolled back.
+Important fields include:
 
-## Automatic Table Creation
+id - Primary key
+name - Employee name
+email - Unique employee email
+department - Employee department
+primary_skill - Main skill
+location - Employee location
+work_mode - WFH or WFO
+is_active - Employee active status
+created_at - Employee creation date and time
+Work Items Table
 
-The application creates missing tables when it starts:
+The work_items table stores work assigned to employees.
 
-```python
-Base.metadata.create_all(bind=engine)
-```
+Important fields include:
 
-This allows a fresh `employee_db` database to create the `employees` table automatically.
+id - Primary key
+title - Work item title
+description - Work item description
+employee_id - Foreign key to employees
+status - TODO, IN_PROGRESS or COMPLETED
+priority - LOW, MEDIUM or HIGH
+due_date - Optional due date
+created_at - Work item creation date and time
+Primary Key
 
+A primary key uniquely identifies each record in a database table.
 
-## Screenshots
+For example:
 
-Swagger UI screenshots are stored in the `screenshots` folder.
+employees.id
+work_items.id
 
-Important tests include:
+Each employee and work item has a unique ID.
 
-- Create employee
-- Search
-- Filters
-- Combined filters
-- Pagination
-- No matches
-- Invalid offset
-- Validation errors
+Foreign Key
 
-Screenshots should show the actual **Execute** response.
+A foreign key connects one database table to another table.
 
-## Learning Note
+In this project:
 
-This project helped me learn:
+work_items.employee_id
+        ↓
+employees.id
 
-- FastAPI REST API development
-- Pydantic validation
-- MySQL connectivity
-- SQLAlchemy ORM
-- CRUD operations
-- Search and filtering
-- Pagination
-- Error handling
-- Database transactions
-- Swagger UI
-- Git and GitHub
+The employee_id in the work_items table identifies the employee assigned to the work item.
 
-## Git Commands
-Check status:
-```powershell
+SQLAlchemy Relationship
+
+SQLAlchemy relationships allow the application to work with related database records using Python objects.
+
+In this project:
+
+Employee
+   │
+   └── WorkItem
+       ├── title
+       ├── status
+       ├── priority
+       └── employee_id
+
+One employee can have multiple work items.
+
+A work item belongs to one employee.
+
+CRUD Operations
+
+CRUD means:
+
+Create
+Read
+Update
+Delete
+
+Employee and WorkItem APIs implement CRUD operations using FastAPI and SQLAlchemy.
+
+Database Error Handling
+
+Database operations are handled using transactions.
+
+If a database operation fails:
+
+The error is caught.
+The transaction is rolled back.
+The database session remains usable.
+An appropriate API error response is returned.
+Data Persistence
+
+The application uses MySQL for persistent storage.
+
+Data remains available after restarting the FastAPI application.
+
+For example:
+
+Create an employee.
+Create a work item.
+Stop the FastAPI server.
+Start the FastAPI server again.
+Request the employee or work item.
+The previously stored data is still available.
+Swagger UI
+
+FastAPI automatically provides Swagger UI for testing the APIs.
+
+Swagger UI can be opened at:
+
+http://127.0.0.1:8000/docs
+
+Swagger was used to test:
+
+Employee CRUD
+Employee search
+Employee filtering
+Employee pagination
+Work item CRUD
+Work item assignment
+Work item search
+Work item filtering
+Combined filters
+Pagination
+Validation errors
+404 errors
+Delete operations
+What I Learned
+
+I learned how to connect a FastAPI application to a MySQL database using SQLAlchemy.
+
+I learned how to:
+
+Build REST APIs using FastAPI.
+Use Pydantic for request validation.
+Connect FastAPI to MySQL.
+Use SQLAlchemy ORM.
+Create database models.
+Create primary keys.
+Create foreign keys.
+Create SQLAlchemy relationships.
+Implement CRUD operations.
+Implement search functionality.
+Implement database filtering.
+Implement combined filters.
+Implement pagination.
+Count records before pagination.
+Validate query parameters.
+Handle HTTP status codes.
+Handle database exceptions.
+Use database transactions and rollback.
+Test APIs using Swagger UI.
+Test invalid requests.
+Verify database persistence after application restart.
+Use Git branches.
+Push code to GitHub.
+Document the project using README.md.
+
+In Task 3, I learned how to implement search, filtering and pagination using SQLAlchemy queries. I also learned how query parameters work in FastAPI and how to validate values such as limit, offset and work mode.
+
+In Task 4, I learned how to create a WorkItem model and connect it with the Employee model using a foreign key and SQLAlchemy relationship. I also learned how to implement work item CRUD operations, filtering, combined filters, pagination, validation and assigned employee details in API responses.
+
+Difficulties
+
+I faced difficulties while setting up the MySQL connection, configuring the database connection details, handling duplicate email validation, and understanding SQLAlchemy database operations.
+
+I also faced some issues while testing the APIs using Swagger UI.
+
+During Task 3, I faced difficulties while implementing the pagination response structure, combining multiple filters, and testing different query parameter combinations.
+
+During Task 4, I faced difficulties while implementing the Employee and WorkItem relationship, handling the assigned employee response, testing combined filters and pagination, and validating invalid status, priority and employee values.
+
+Assumptions
+Employee and work item records are stored in the MySQL database.
+Records remain available after application restarts.
+Every work item must be assigned to an existing employee.
+Database credentials are stored locally in the .env file.
+The .env file is not committed to the repository.
+Fictional employee and work item data is used for testing.
+Work item status is limited to TODO, IN_PROGRESS and COMPLETED.
+Work item priority is limited to LOW, MEDIUM and HIGH.
+Security
+Database passwords are stored in .env.
+.env is excluded from Git.
+.env.example contains only placeholder values.
+Database credentials must not be pushed to GitHub.
+Virtual environment files are excluded from Git.
+Python cache files are excluded from Git.
+Git Commands
+
+Check project status:
+
 git status
 
 Add changes:
-```powershell
+
 git add .
 
-Commit:
-```powershell
-git commit -m "Fix Task 3 validation and database handling"
+Commit changes:
 
-Push:
-```powershell
-git push origin main
+git commit -m "Complete Task 4 documentation"
 
-## Security
-Never commit real database passwords.
-`.gitignore` should contain:
+Create or switch to Task 4 branch:
 
-.env
-.venv/
-venv/
-__pycache__/
-*.pyc
-                      
-## Project Status
-**Task 1:** Employee CRUD
-**Task 2:** MySQL + SQLAlchemy integration
-**Task 3:** Search, filtering, and pagination
-**Status:** Completed and ready for testing.
+git checkout -b task-4
+
+Push Task 4 branch:
+
+git push -u origin task-4
+
+Check branches:
+
+git branch
+
+Check commit history:
+
+git log --oneline
+Project Status
+Task 1
+
+Employee Management API implemented.
+
+Task 2
+
+MySQL database integration and SQLAlchemy persistence implemented.
+
+Task 3
+
+Employee search, filtering and pagination implemented.
+
+Task 4
+
+Work Item Management API implemented with:
+
+Work item CRUD
+Employee assignment
+Employee reassignment
+Foreign key relationship
+SQLAlchemy relationship
+Work item search
+Work item filtering
+Combined filters
+Pagination
+Validation
+Error handling
+Database persistence
+Conclusion
+
+This project demonstrates a FastAPI backend connected to MySQL using SQLAlchemy.
+
+The application supports employee management and work item management with validation, CRUD operations, search, filtering, pagination, database relationships and persistent storage.
+
+The project was tested using Swagger UI and the code is maintained using Git and GitHub
