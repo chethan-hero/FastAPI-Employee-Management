@@ -177,6 +177,18 @@ GET /work-items?employee_id=2&status=TODO&priority=MEDIUM&limit=10&offset=0
 - Invalid status or priority returns a validation error.
 - Database changes are rolled back when a database error occurs.
 
+##Employee Deletion Behavior
+
+When an employee is deleted, all work items assigned to that employee are also deleted automatically.
+
+This cascade delete behavior ensures that:
+
+Assigned work items do not remain without an employee.
+No orphaned work items are left in the database.
+The employee and their assigned work items are removed together.
+Database relationships remain consistent.
+
+Example: If Employee ID 5 has 3 assigned work items, deleting Employee ID 5 will also delete those 3 work items automatically.
 ## Employee and Work Item Relationship
 
 A work item belongs to an employee through the `employee_id` foreign key.
