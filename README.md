@@ -7,33 +7,20 @@ This project is a FastAPI backend for managing employee records and work items. 
 Technologies Used
 
 Python 3.12
-
 FastAPI
-
 Pydantic
-
 MySQL
-
 SQLAlchemy
-
 PyMySQL
-
 Uvicorn
-
 Swagger UI
-
 Git
-
 GitHub
 
 Employee Fields
-
 ID
-
 Name
-
 Email
-
 Department
 
 Primary Skill
