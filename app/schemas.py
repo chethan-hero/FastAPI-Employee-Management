@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from pydantic import (BaseModel,ConfigDict,EmailStr,Field,field_validator,model_validator,)
 
 
 VALID_WORK_MODES = {"WFH", "WFO"}
@@ -16,7 +16,6 @@ def validate_required_text(value: str) -> str:
         raise ValueError("This field cannot be empty or contain only spaces.")
 
     return value
-
 
 class EmployeeCreate(BaseModel):
     name: str
@@ -61,6 +60,26 @@ class EmployeeUpdate(BaseModel):
     work_mode: Optional[str] = None
     is_active: Optional[bool] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def reject_null_required_fields(cls, data):
+        if isinstance(data, dict):
+            required_fields = [
+                "name",
+                "email",
+                "department",
+                "primary_skill",
+                "location",
+                "work_mode",
+                "is_active",
+            ]
+
+            for field in required_fields:
+                if field in data and data[field] is None:
+                    raise ValueError(f"{field} cannot be null.")
+
+        return data
+
     @field_validator(
         "name",
         "department",
@@ -91,7 +110,6 @@ class EmployeeUpdate(BaseModel):
 
         return value
 
-
 class EmployeeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -112,11 +130,9 @@ class EmployeeListResponse(BaseModel):
     limit: int
     offset: int
 
-
-
 class WorkItemCreate(BaseModel):
-    title: str
-    description: Optional[str] = None
+    title: str = Field(..., max_length=200)
+    description: Optional[str] = Field(default=None, max_length=1000)
     employee_id: int
     status: str = "TODO"
     priority: str = "MEDIUM"
@@ -178,14 +194,30 @@ class WorkItemCreate(BaseModel):
 
         return value
 
-
 class WorkItemUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: Optional[str] = Field(default=None, max_length=200)
+    description: Optional[str] = Field(default=None, max_length=1000)
     employee_id: Optional[int] = None
     status: Optional[str] = None
     priority: Optional[str] = None
     due_date: Optional[date] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_null_required_fields(cls, data):
+        if isinstance(data, dict):
+            required_fields = [
+                "title",
+                "employee_id",
+                "status",
+                "priority",
+            ]
+
+            for field in required_fields:
+                if field in data and data[field] is None:
+                    raise ValueError(f"{field} cannot be null.")
+
+        return data
 
     @field_validator("title", mode="before")
     @classmethod
@@ -257,13 +289,14 @@ class WorkItemUpdate(BaseModel):
 
 class AssignedEmployeeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     email: EmailStr
 
-
 class WorkItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     description: Optional[str]
