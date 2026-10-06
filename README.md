@@ -36,15 +36,10 @@ Created At
 Employee APIs
 
 POST /employees
-
 GET /employees
-
 GET /employees/{id}
-
 PUT /employees/{id}
-
 DELETE /employees/{id}
-
 GET /health
 
 Employee Validation
