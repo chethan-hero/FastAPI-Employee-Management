@@ -177,7 +177,7 @@ GET /work-items?employee_id=2&status=TODO&priority=MEDIUM&limit=10&offset=0
 - Invalid status or priority returns a validation error.
 - Database changes are rolled back when a database error occurs.
 
-##Employee Deletion Behavior
+## Employee Deletion Behavior
 
 When an employee is deleted, all work items assigned to that employee are also deleted automatically.
 
