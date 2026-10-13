@@ -4,9 +4,12 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
-
+from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy.orm import Session
 from app.database import Base, engine, get_db
 from app.models import Employee, WorkItem
+from app.database import get_db
+from app import models, schemas, services
 from app.schemas import (
     EmployeeCreate,
     EmployeeListResponse,
@@ -480,6 +483,79 @@ def get_work_item(
         )
 
     return work_item
+
+@app.get(
+    "/employees/{employee_id}/work-items/summary",
+    response_model=schemas.EmployeeWorkItemSummary,
+)
+def employee_work_item_summary(
+    employee_id: int,
+    db: Session = Depends(get_db),
+):
+    summary = services.get_employee_work_item_summary(
+        db=db,
+        employee_id=employee_id,
+    )
+
+    if summary is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Employee not found",
+        )
+
+    return summary
+
+@app.put("/work-items/{work_item_id}")
+def update_work_item_put(
+    work_item_id: int,
+    payload: schemas.WorkItemUpdate,
+    db: Session = Depends(get_db),
+):
+    try:
+        work_item = services.update_work_item(
+            db,
+            work_item_id,
+            payload.model_dump(exclude_unset=True),
+        )
+    except services.StatusTransitionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    if work_item is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work item not found",
+        )
+
+    return work_item
+
+
+@app.patch("/work-items/{work_item_id}")
+def update_work_item_patch(
+    work_item_id: int,
+    payload: schemas.WorkItemUpdate,
+    db: Session = Depends(get_db),
+):
+    try:
+        work_item = services.update_work_item(
+            db,
+            work_item_id,
+            payload.model_dump(exclude_unset=True),
+        )
+    except services.StatusTransitionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    if work_item is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work item not found",
+        )
+
+    return work_item
+
 
 
 @app.put(

@@ -1,139 +1,17 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import (BaseModel,ConfigDict,EmailStr,Field,field_validator,model_validator,)
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-VALID_WORK_MODES = {"WFH", "WFO"}
 VALID_STATUSES = {"TODO", "IN_PROGRESS", "COMPLETED"}
 VALID_PRIORITIES = {"LOW", "MEDIUM", "HIGH"}
 
 
-def validate_required_text(value: str) -> str:
-    value = value.strip()
-
-    if not value:
-        raise ValueError("This field cannot be empty or contain only spaces.")
-
-    return value
-
-class EmployeeCreate(BaseModel):
-    name: str
-    email: EmailStr
-    department: str
-    primary_skill: str
-    location: str
-    work_mode: str
-    is_active: bool = True
-
-    @field_validator(
-        "name",
-        "department",
-        "primary_skill",
-        "location",
-        mode="before",
-    )
-    @classmethod
-    def validate_text_fields(cls, value):
-        if not isinstance(value, str):
-            raise ValueError("Value must be a string.")
-
-        return validate_required_text(value)
-
-    @field_validator("work_mode")
-    @classmethod
-    def validate_work_mode(cls, value):
-        value = value.strip().upper()
-
-        if value not in VALID_WORK_MODES:
-            raise ValueError("work_mode must be either WFH or WFO.")
-
-        return value
-
-
-class EmployeeUpdate(BaseModel):
-    name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    department: Optional[str] = None
-    primary_skill: Optional[str] = None
-    location: Optional[str] = None
-    work_mode: Optional[str] = None
-    is_active: Optional[bool] = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def reject_null_required_fields(cls, data):
-        if isinstance(data, dict):
-            required_fields = [
-                "name",
-                "email",
-                "department",
-                "primary_skill",
-                "location",
-                "work_mode",
-                "is_active",
-            ]
-
-            for field in required_fields:
-                if field in data and data[field] is None:
-                    raise ValueError(f"{field} cannot be null.")
-
-        return data
-
-    @field_validator(
-        "name",
-        "department",
-        "primary_skill",
-        "location",
-        mode="before",
-    )
-    @classmethod
-    def validate_text_fields(cls, value):
-        if value is None:
-            return value
-
-        if not isinstance(value, str):
-            raise ValueError("Value must be a string.")
-
-        return validate_required_text(value)
-
-    @field_validator("work_mode")
-    @classmethod
-    def validate_work_mode(cls, value):
-        if value is None:
-            return value
-
-        value = value.strip().upper()
-
-        if value not in VALID_WORK_MODES:
-            raise ValueError("work_mode must be either WFH or WFO.")
-
-        return value
-
-class EmployeeResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    name: str
-    email: EmailStr
-    department: str
-    primary_skill: str
-    location: str
-    work_mode: str
-    is_active: bool
-    created_at: datetime
-
-
-class EmployeeListResponse(BaseModel):
-    items: list[EmployeeResponse]
-    total: int
-    limit: int
-    offset: int
-
 class WorkItemCreate(BaseModel):
-    title: str = Field(..., max_length=200)
+    title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = Field(default=None, max_length=1000)
-    employee_id: int
+    employee_id: int = Field(..., gt=0)
     status: str = "TODO"
     priority: str = "MEDIUM"
     due_date: Optional[date] = None
@@ -141,174 +19,100 @@ class WorkItemCreate(BaseModel):
     @field_validator("title", mode="before")
     @classmethod
     def validate_title(cls, value):
-        if not isinstance(value, str):
-            raise ValueError("Title must be a string.")
-
-        value = value.strip()
-
-        if not value:
-            raise ValueError("Title cannot be empty or contain only spaces.")
-
-        return value
-
-    @field_validator("description", mode="before")
-    @classmethod
-    def validate_description(cls, value):
-        if value is None:
-            return value
-
-        if not isinstance(value, str):
-            raise ValueError("Description must be a string.")
-
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Title cannot be empty")
+        if len(value) > 200:
+            raise ValueError("Title cannot exceed 200 characters")
         return value.strip()
-
-    @field_validator("employee_id")
-    @classmethod
-    def validate_employee_id(cls, value):
-        if value <= 0:
-            raise ValueError("employee_id must be greater than 0.")
-
-        return value
 
     @field_validator("status")
     @classmethod
     def validate_status(cls, value):
-        value = value.strip().upper()
-
         if value not in VALID_STATUSES:
             raise ValueError(
-                "status must be TODO, IN_PROGRESS or COMPLETED."
+                "Status must be TODO, IN_PROGRESS, or COMPLETED"
             )
-
         return value
 
     @field_validator("priority")
     @classmethod
     def validate_priority(cls, value):
-        value = value.strip().upper()
-
         if value not in VALID_PRIORITIES:
             raise ValueError(
-                "priority must be LOW, MEDIUM or HIGH."
+                "Priority must be LOW, MEDIUM, or HIGH"
             )
-
         return value
+
 
 class WorkItemUpdate(BaseModel):
     title: Optional[str] = Field(default=None, max_length=200)
     description: Optional[str] = Field(default=None, max_length=1000)
-    employee_id: Optional[int] = None
+    employee_id: Optional[int] = Field(default=None, gt=0)
     status: Optional[str] = None
     priority: Optional[str] = None
     due_date: Optional[date] = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def reject_null_required_fields(cls, data):
-        if isinstance(data, dict):
-            required_fields = [
-                "title",
-                "employee_id",
-                "status",
-                "priority",
-            ]
-
-            for field in required_fields:
-                if field in data and data[field] is None:
-                    raise ValueError(f"{field} cannot be null.")
-
-        return data
 
     @field_validator("title", mode="before")
     @classmethod
     def validate_title(cls, value):
         if value is None:
-            return value
-
-        if not isinstance(value, str):
-            raise ValueError("Title must be a string.")
-
-        value = value.strip()
-
-        if not value:
-            raise ValueError("Title cannot be empty or contain only spaces.")
-
-        return value
-
-    @field_validator("description", mode="before")
-    @classmethod
-    def validate_description(cls, value):
-        if value is None:
-            return value
-
-        if not isinstance(value, str):
-            raise ValueError("Description must be a string.")
-
+            raise ValueError("Title cannot be null")
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Title cannot be empty")
+        if len(value) > 200:
+            raise ValueError("Title cannot exceed 200 characters")
         return value.strip()
 
-    @field_validator("employee_id")
-    @classmethod
-    def validate_employee_id(cls, value):
-        if value is None:
-            return value
-
-        if value <= 0:
-            raise ValueError("employee_id must be greater than 0.")
-
-        return value
-
-    @field_validator("status")
+    @field_validator("status", mode="before")
     @classmethod
     def validate_status(cls, value):
         if value is None:
-            return value
-
-        value = value.strip().upper()
-
+            raise ValueError("Status cannot be null")
         if value not in VALID_STATUSES:
             raise ValueError(
-                "status must be TODO, IN_PROGRESS or COMPLETED."
+                "Status must be TODO, IN_PROGRESS, or COMPLETED"
             )
-
         return value
 
-    @field_validator("priority")
+    @field_validator("priority", mode="before")
     @classmethod
     def validate_priority(cls, value):
         if value is None:
-            return value
-
-        value = value.strip().upper()
-
+            raise ValueError("Priority cannot be null")
         if value not in VALID_PRIORITIES:
             raise ValueError(
-                "priority must be LOW, MEDIUM or HIGH."
+                "Priority must be LOW, MEDIUM, or HIGH"
             )
-
         return value
 
-class AssignedEmployeeResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
 
-    id: int
-    name: str
-    email: EmailStr
+class WorkItemStatusUpdate(BaseModel):
+    status: str
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def validate_status(cls, value):
+        if not isinstance(value, str) or value not in VALID_STATUSES:
+            raise ValueError(
+                "Status must be TODO, IN_PROGRESS, or COMPLETED"
+            )
+        return value
+
 
 class WorkItemResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
     title: str
-    description: Optional[str]
+    description: Optional[str] = None
     employee_id: int
     status: str
     priority: str
-    due_date: Optional[date]
+    due_date: Optional[date] = None
     created_at: datetime
-    assigned_employee: AssignedEmployeeResponse
 
-class WorkItemListResponse(BaseModel):
-    total: int
-    limit: int
-    offset: int
-    items: list[WorkItemResponse]
+    model_config = ConfigDict(from_attributes=True)
+
+class EmployeeWorkItemSummary(BaseModel):
+    total_work_items: int = Field(..., ge=0)
+    todo: int = Field(..., ge=0)
+    in_progress: int = Field(..., ge=0)
+    completed: int = Field(..., ge=0)
