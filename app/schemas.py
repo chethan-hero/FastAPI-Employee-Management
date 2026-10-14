@@ -1,9 +1,13 @@
-
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    EmailStr,
+    field_validator,
+)
 
 VALID_WORK_MODES = {"WFH", "WFO"}
 VALID_STATUSES = {"TODO", "IN_PROGRESS", "COMPLETED"}
@@ -12,7 +16,7 @@ VALID_PRIORITIES = {"LOW", "MEDIUM", "HIGH"}
 
 class EmployeeCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    email: str = Field(..., min_length=1, max_length=255)
+    email: EmailStr
     department: str = Field(..., min_length=1, max_length=100)
     primary_skill: str = Field(..., min_length=1, max_length=100)
     location: str = Field(..., min_length=1, max_length=100)
@@ -35,13 +39,6 @@ class EmployeeCreate(BaseModel):
             raise ValueError("Email is required")
         return value.strip()
 
-    @field_validator("email")
-    @classmethod
-    def validate_email_format(cls, value):
-        from pydantic import TypeAdapter, EmailStr
-
-        return TypeAdapter(EmailStr).validate_python(value)
-
     @field_validator("work_mode")
     @classmethod
     def validate_work_mode(cls, value):
@@ -52,7 +49,7 @@ class EmployeeCreate(BaseModel):
 
 class EmployeeUpdate(BaseModel):
     name: Optional[str] = None
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None
     department: Optional[str] = None
     primary_skill: Optional[str] = None
     location: Optional[str] = None
@@ -80,13 +77,6 @@ class EmployeeUpdate(BaseModel):
             raise ValueError("Email cannot be empty")
         return value.strip()
 
-    @field_validator("email")
-    @classmethod
-    def validate_email_format(cls, value):
-        from pydantic import TypeAdapter, EmailStr
-
-        return TypeAdapter(EmailStr).validate_python(value)
-
     @field_validator("work_mode", mode="before")
     @classmethod
     def validate_work_mode(cls, value):
@@ -110,6 +100,12 @@ class EmployeeResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class EmployeeListResponse(BaseModel):
+    items: list[EmployeeResponse]
+    total: int = Field(..., ge=0)
+
+
 class WorkItemCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = Field(default=None, max_length=1000)
@@ -123,9 +119,16 @@ class WorkItemCreate(BaseModel):
     def validate_title(cls, value):
         if not isinstance(value, str) or not value.strip():
             raise ValueError("Title cannot be empty")
-        if len(value) > 200:
+        if len(value.strip()) > 200:
             raise ValueError("Title cannot exceed 200 characters")
         return value.strip()
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def validate_description(cls, value):
+        if value is not None and len(value) > 1000:
+            raise ValueError("Description cannot exceed 1000 characters")
+        return value
 
     @field_validator("status")
     @classmethod
@@ -159,9 +162,25 @@ class WorkItemUpdate(BaseModel):
             raise ValueError("Title cannot be null")
         if not isinstance(value, str) or not value.strip():
             raise ValueError("Title cannot be empty")
-        if len(value) > 200:
+        if len(value.strip()) > 200:
             raise ValueError("Title cannot exceed 200 characters")
         return value.strip()
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def validate_description(cls, value):
+        if value is not None and len(value) > 1000:
+            raise ValueError("Description cannot exceed 1000 characters")
+        return value
+
+    @field_validator("employee_id", mode="before")
+    @classmethod
+    def validate_employee_id(cls, value):
+        if value is None:
+            raise ValueError("Employee ID cannot be null")
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise ValueError("Employee ID must be a positive integer")
+        return value
 
     @field_validator("status", mode="before")
     @classmethod
@@ -179,7 +198,7 @@ class WorkItemUpdate(BaseModel):
     def validate_priority(cls, value):
         if value is None:
             raise ValueError("Priority cannot be null")
-        if value not in VALID_PRIORITIES:
+        if not isinstance(value, str) or value not in VALID_PRIORITIES:
             raise ValueError("Priority must be LOW, MEDIUM, or HIGH")
         return value
 
@@ -208,6 +227,11 @@ class WorkItemResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class WorkItemListResponse(BaseModel):
+    items: list[WorkItemResponse]
+    total: int = Field(..., ge=0)
 
 
 class EmployeeWorkItemSummary(BaseModel):

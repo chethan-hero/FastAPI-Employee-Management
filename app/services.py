@@ -1,201 +1,191 @@
+
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from app.models import Employee
-from app.schemas import EmployeeCreate, EmployeeUpdate
 
-DATABASE_ERROR = "Database error. Please try again."
+from app.models import Employee, WorkItem
 
-def create_employee(
+
+VALID_STATUSES = {"TODO", "IN_PROGRESS", "COMPLETED"}
+
+ALLOWED_TRANSITIONS = {
+    "TODO": {"IN_PROGRESS"},
+    "IN_PROGRESS": {"COMPLETED"},
+    "COMPLETED": set(),
+}
+
+
+class StatusTransitionError(Exception):
+    """Raised when a work-item status transition is not allowed."""
+
+
+def change_work_item_status(
     db: Session,
-    employee_data: EmployeeCreate
-):
-    try:
-        existing_employee = (
-            db.query(Employee)
-            .filter(
-                func.lower(Employee.email)
-                == employee_data.email.lower()
-            )
-            .first()
+    work_item: WorkItem,
+    new_status: str,
+) -> WorkItem:
+    """
+    Validate and apply a status change.
+
+    Requesting the current status again is treated as a no-op.
+    """
+
+    if new_status not in VALID_STATUSES:
+        raise StatusTransitionError("Invalid work-item status")
+
+    current_status = work_item.status
+
+    if new_status == current_status:
+        return work_item
+
+    allowed = ALLOWED_TRANSITIONS.get(current_status, set())
+
+    if new_status not in allowed:
+        raise StatusTransitionError(
+            f"Cannot change status from {current_status} "
+            f"to {new_status}"
         )
 
-        if existing_employee:
-            return None, "Email already exists"
-
-        employee = Employee(
-            name=employee_data.name,
-            email=employee_data.email.lower(),
-            department=employee_data.department,
-            primary_skill=employee_data.primary_skill,
-            location=employee_data.location,
-            work_mode=employee_data.work_mode,
-            is_active=employee_data.is_active
-        )
-
-        db.add(employee)
-        db.commit()
-        db.refresh(employee)
-
-        return employee, None
-
-    except IntegrityError:
-        db.rollback()
-        return None, "Email already exists"
-
-    except SQLAlchemyError:
-        db.rollback()
-        return None, DATABASE_ERROR
+    work_item.status = new_status
+    return work_item
 
 
-def get_employees(
+def update_work_item(
     db: Session,
-    search: str | None = None,
-    department: str | None = None,
-    work_mode: str | None = None,
-    is_active: bool | None = None,
-    limit: int = 10,
-    offset: int = 0
-):
-    try:
-        query = db.query(Employee)
+    work_item_id: int,
+    update_data: dict,
+) -> WorkItem | None:
+    """
+    Update a work item.
 
-        if search:
-            search = search.strip()
+    Use this function for PUT and PATCH so that both endpoints
+    apply the same status-transition rules.
+    """
 
-            if search:
-                query = query.filter(
-                    Employee.name.ilike(f"%{search}%")
-                )
-        if department:
-            department = department.strip()
+    work_item = (
+        db.query(WorkItem)
+        .filter(WorkItem.id == work_item_id)
+        .first()
+    )
 
-            if department:
-                query = query.filter(
-                    Employee.department == department
-                )
+    if work_item is None:
+        return None
 
-        if work_mode:
-            query = query.filter(
-                Employee.work_mode == work_mode
-            )
+    new_status = update_data.get("status")
 
-        if is_active is not None:
-            query = query.filter(
-                Employee.is_active == is_active
-            )
+    if new_status is not None:
+        change_work_item_status(db, work_item, new_status)
 
-        total = query.count()
+    new_employee_id = update_data.get("employee_id")
 
-        employees = (
-            query
-            .order_by(Employee.id.asc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
-
-        return total, employees, None
-
-    except SQLAlchemyError:
-        db.rollback()
-        return 0, [], DATABASE_ERROR
-
-
-def get_employee_by_id(
-    db: Session,
-    employee_id: int
-):
-    try:
+    if new_employee_id is not None:
         employee = (
             db.query(Employee)
-            .filter(Employee.id == employee_id)
+            .filter(Employee.id == new_employee_id)
             .first()
         )
 
-        if not employee:
-            return None, "Employee not found"
+        if employee is None:
+            raise ValueError("Assigned employee does not exist")
 
-        return employee, None
+    try:
+        for field, value in update_data.items():
+            if field == "status":
+                continue
 
-    except SQLAlchemyError:
+            if hasattr(work_item, field):
+                setattr(work_item, field, value)
+
+        db.commit()
+        db.refresh(work_item)
+        return work_item
+
+    except Exception:
         db.rollback()
-        return None, DATABASE_ERROR
+        raise
 
 
-def update_employee(
+def get_employee_work_item_summary(
     db: Session,
     employee_id: int,
-    employee_data: EmployeeUpdate
-):
-    try:
-        employee = (
-            db.query(Employee)
-            .filter(Employee.id == employee_id)
-            .first()
+) -> dict | None:
+    """
+    Return status counts for an existing employee.
+
+    Returns None if the employee does not exist.
+    Counts are calculated by the database.
+    """
+
+    employee_exists = (
+        db.query(Employee.id)
+        .filter(Employee.id == employee_id)
+        .first()
+    )
+
+    if employee_exists is None:
+        return None
+
+    result = (
+        db.query(
+            func.count(WorkItem.id).label("total_work_items"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (WorkItem.status == "TODO", 1),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("todo"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (WorkItem.status == "IN_PROGRESS", 1),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("in_progress"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (WorkItem.status == "COMPLETED", 1),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("completed"),
         )
+        .filter(WorkItem.employee_id == employee_id)
+        .one()
+    )
 
-        if not employee:
-            return None, "Employee not found"
-
-        update_data = employee_data.model_dump(
-            exclude_unset=True
-        )
-
-        # Check duplicate email during update
-        if "email" in update_data:
-            new_email = update_data["email"].lower()
-
-            existing_employee = (
-                db.query(Employee)
-                .filter(
-                    func.lower(Employee.email) == new_email,
-                    Employee.id != employee_id
-                )
-                .first()
-            )
-
-            if existing_employee:
-                return None, "Email already exists"
-
-            update_data["email"] = new_email
-
-        for field, value in update_data.items():
-            setattr(employee, field, value)
-
-        db.commit()
-        db.refresh(employee)
-
-        return employee, None
-
-    except IntegrityError:
-        db.rollback()
-        return None, "Email already exists"
-
-    except SQLAlchemyError:
-        db.rollback()
-        return None, DATABASE_ERROR
+    return {
+        "total_work_items": result.total_work_items,
+        "todo": result.todo,
+        "in_progress": result.in_progress,
+        "completed": result.completed,
+    }
 
 
-def delete_employee(
+def delete_work_item(
     db: Session,
-    employee_id: int
-):
+    work_item_id: int,
+) -> bool:
+    """Delete a work item and return whether it existed."""
+
+    work_item = (
+        db.query(WorkItem)
+        .filter(WorkItem.id == work_item_id)
+        .first()
+    )
+
+    if work_item is None:
+        return False
+
     try:
-        employee = (
-            db.query(Employee)
-            .filter(Employee.id == employee_id)
-            .first()
-        )
-
-        if not employee:
-            return None, "Employee not found"
-
-        db.delete(employee)
+        db.delete(work_item)
         db.commit()
-
-        return employee, None
-
-    except SQLAlchemyError:
+        return True
+    except Exception:
         db.rollback()
-        return None, DATABASE_ERROR
+        raise
