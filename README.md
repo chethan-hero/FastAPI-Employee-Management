@@ -1,458 +1,357 @@
-# FastAPI Employee Management
+# FastAPI Employee Management System
 
-## Project Description
+## 1. Project Overview
 
-This project is a FastAPI backend for managing employee records and work items. Employee and work item records are stored in a MySQL database using SQLAlchemy. The records remain available even after the application is restarted.
+A REST API application built with Python, FastAPI, MySQL, SQLAlchemy,
+and Pydantic. It manages employees and their assigned work items,
+including CRUD operations, searching, filtering, pagination, status
+transitions, and employee work-item summaries.
 
-## Technologies Used
+Task 5 adds controlled work-item status transitions and an employee
+work-item summary endpoint.
 
-- Python 3.12
-- FastAPI
-- Pydantic
-- MySQL
-- SQLAlchemy
-- PyMySQL
-- Uvicorn
-- Swagger UI
-- Git
-- GitHub
+## 2. Technologies Used
 
-## Employee Fields
+-   Python 3.12+
+-   FastAPI and Pydantic
+-   SQLAlchemy ORM
+-   MySQL and PyMySQL
+-   Uvicorn and python-dotenv
+-   Swagger UI
+-   Git, GitHub, and Visual Studio Code
 
-- ID
-- Name
-- Email
-- Department
-- Primary Skill
-- Location
-- Work Mode
-- Is Active
-- Created At
+## 3. Project Structure
 
-## Employee APIs
-
-- `POST /employees`
-- `GET /employees`
-- `GET /employees/{id}`
-- `PUT /employees/{id}`
-- `DELETE /employees/{id}`
-- `GET /health`
-
-## Employee Validation
-
-- Required employee fields are validated.
-- Empty or whitespace-only required fields are rejected.
-- Email format is validated.
-- Duplicate email is not allowed.
-- Email uniqueness is checked without treating uppercase and lowercase as different.
-- Work mode accepts `WFH` or `WFO`.
-- Employee ID must be greater than 0.
-- 404 error is returned when an employee is not found.
-- Employee IDs are generated automatically by the database.
-- `is_active` is set to `true` by default.
-- `created_at` is generated when an employee is created and preserved during updates.
-- Failed database changes are rolled back so that later requests can continue working.
-
-# Task 3 - Search, Filtering and Pagination
-
-The `GET /employees` endpoint supports searching, filtering and pagination.
-
-## Query Parameters
-
-- `search` - Searches employees by name using partial and case-insensitive matching.
-- `department` - Filters employees by department.
-- `work_mode` - Filters employees by WFH or WFO.
-- `is_active` - Filters employees by active or inactive status.
-- `limit` - Maximum number of records to return. Default is 10. Allowed values are 1 to 100.
-- `offset` - Number of records to skip. Default is 0. Negative values are not allowed.
-
-## Project Structure
-
-```text
+``` text
 FastAPI-Employee-Management/
-│
 ├── app/
 │   ├── __init__.py
-│   ├── database.py
 │   ├── main.py
+│   ├── database.py
 │   ├── models.py
 │   ├── schemas.py
 │   └── services.py
-│
 ├── screenshots/
-│   ├── Task 3 screenshots
-│   └── Task 4 screenshots
-│
 ├── .env
 ├── .env.example
 ├── .gitignore
-├── README.md
-└── requirements.txt
+├── requirements.txt
+└── README.md
 ```
 
-## Task 3 Testing
+-   `main.py`: API routes and HTTP request/response handling.
+-   `database.py`: MySQL connection and SQLAlchemy sessions.
+-   `models.py`: Database tables and relationships.
+-   `schemas.py`: Request validation and response schemas.
+-   `services.py`: Business rules and database operations.
+-   `.env`: Local database configuration; do not commit this file.
+-   `.env.example`: Example environment variables with placeholder
+    values.
 
-The following scenarios were tested using Swagger UI:
+## 4. Features
 
-- Employee name search
-- Department filtering
-- Work mode filtering
-- Active/inactive filtering
-- Combined filters
-- Partial name search
-- Pagination using limit and offset
-- No matching results
-- Offset greater than the matching records
-- Invalid limit values
-- Negative offset validation
-- Invalid work mode validation
+### Employee Management
 
-Search, filtering and pagination are performed using SQLAlchemy queries.
+-   Create, retrieve, update, and delete employees.
+-   Validate employee data and prevent duplicate email addresses.
+-   Search by name; filter by department, work mode, and active status.
+-   Support pagination.
 
-# Task 4 - Work Item Management
+### Work-Item Management
 
-Task 4 adds work item management to the Employee Management API.
+-   Create, retrieve, update, and delete work items.
+-   Assign and reassign work items to employees.
+-   Search by title and filter by employee, status, and priority.
+-   Validate work-item information and status transitions.
 
-Each work item is assigned to an existing employee using a foreign key relationship.
+### Employee Work-Item Summary
 
-## Work Item Fields
+-   Count work items currently assigned to an employee.
+-   Count `TODO`, `IN_PROGRESS`, and `COMPLETED` work items.
+-   Calculate counts using SQLAlchemy database aggregation.
+-   Return zero counts for an existing employee with no work items.
+-   Return HTTP 404 when the employee does not exist.
+-   Reflect status changes, reassignment, and deletion in subsequent
+    summaries.
 
-- ID
-- Title
-- Description
-- Employee ID
-- Status
-- Priority
-- Due Date
-- Created At
-- Assigned Employee
+## 5. Work-Item Statuses and Priorities
 
-## Work Item Status
+### Statuses
 
-- `TODO`
-- `IN_PROGRESS`
-- `COMPLETED`
+  Status          Description
+  --------------- ------------------------------
+  `TODO`          Work has not yet progressed.
+  `IN_PROGRESS`   Work is being performed.
+  `COMPLETED`     Work is complete.
 
-## Work Item Priority
+### Priorities
 
-- `LOW`
-- `MEDIUM`
-- `HIGH`
+  Priority   Description
+  ---------- -----------------------
+  `LOW`      Low-priority work.
+  `MEDIUM`   Normal-priority work.
+  `HIGH`     High-priority work.
 
-## Work Item APIs
+The default status is `TODO`; the default priority is `MEDIUM`. The
+service layer should enforce the configured transition rules
+consistently for PUT and PATCH. Rejected updates must not modify the
+stored record. Requesting the current status again should follow the
+same-status rule implemented by the service.
 
-- `POST /work-items`
-- `GET /work-items`
-- `GET /work-items/{work_item_id}`
-- `PUT /work-items/{work_item_id}`
-- `DELETE /work-items/{work_item_id}`
+## 6. Employee Work-Item Summary API
 
-## Task 4 Query Parameters
+**Endpoint**
 
-The `GET /work-items` endpoint supports search, filtering and pagination.
-
-- `search` - Searches work items by title using partial and case-insensitive matching.
-- `employee_id` - Filters work items by assigned employee.
-- `status` - Filters work items by status.
-- `priority` - Filters work items by priority.
-- `limit` - Maximum number of records to return. Default is 10. Allowed values are 1 to 100.
-- `offset` - Number of records to skip. Default is 0. Negative values are not allowed.
-
-### Example Request
-
-```text
-GET /work-items?employee_id=2&status=TODO&priority=MEDIUM&limit=10&offset=0
+``` http
+GET /employees/{employee_id}/work-items/summary
 ```
 
-## Work Item Validation
+**Example request**
 
-- Title is required.
-- Empty or whitespace-only titles are rejected.
-- Employee ID must be greater than 0.
-- Assigned employee must exist.
-- Status accepts `TODO`, `IN_PROGRESS` or `COMPLETED`.
-- Priority accepts `LOW`, `MEDIUM` or `HIGH`.
-- Work item ID must be greater than 0.
-- 404 error is returned when a work item or employee is not found.
-- Invalid status or priority returns a validation error.
-- Database changes are rolled back when a database error occurs.
-
-## Employee Deletion Behavior
-When an employee is deleted, all work items assigned to that employee are also deleted automatically.
-
-This cascade delete behavior ensures that:
-
-Assigned work items do not remain without an employee. No orphaned work items are left in the database. The employee and their assigned work items are removed together. Database relationships remain consistent.
-
-Example: If Employee ID 5 has 3 assigned work items, deleting Employee ID 5 will also delete those 3 work items automatically.
-
-## Employee and Work Item Relationship
-
-A work item belongs to an employee through the `employee_id` foreign key.
-
-The `work_items.employee_id` field references the `employees.id` field.
-
-SQLAlchemy relationships connect the Employee and WorkItem models.
-
-- Each employee can have multiple work items.
-- Each work item belongs to one employee.
-
-Each work item response also returns the assigned employee's:
-
-- ID
-- Name
-- Email
-
-## Task 4 Testing
-
-The following scenarios were tested using Swagger UI:
-
-- Create work item
-- Create work item with non-existing employee
-- Get all work items
-- Get work item by ID
-- Search by title
-- Filter by employee ID
-- Filter by status
-- Filter by priority
-- Combined filters
-- Pagination using limit and offset
-- Update work item
-- Reassign work item to another employee
-- Invalid status validation
-- Invalid priority validation
-- Blank title validation
-- Missing work item validation
-- Delete work item
-- Verify deleted work item returns 404
-- Verify data remains available after application restart
-- Verify existing employee APIs continue working
-
-Search, filtering, pagination and ordering are performed using SQLAlchemy queries.
-
-# Database Setup
-
-Create a MySQL database named `employee_db`.
-
-The application uses SQLAlchemy and PyMySQL to connect to MySQL and perform database operations.
-
-The `employees` and `work_items` tables are created using the SQLAlchemy models when the application starts.
-
-The email field has a database-level unique constraint.
-
-The `work_items.employee_id` field is a foreign key that references the `employees.id` field.
-
-Database sessions are closed after use.
-
-## Database Configuration
-
-Create a local `.env` file in the project root and add the database connection details.
-
-```env
-DATABASE_URL=mysql+pymysql://root:YourPassword@localhost:3306/employee_db
+``` http
+GET /employees/1/work-items/summary
 ```
 
-## Employees Table
+**Example response**
 
-The `employees` table stores employee information.
-
-### Important Fields
-
-- `id` - Primary key
-- `name` - Employee name
-- `email` - Unique employee email
-- `department` - Employee department
-- `primary_skill` - Main skill
-- `location` - Employee location
-- `work_mode` - WFH or WFO
-- `is_active` - Employee active status
-- `created_at` - Employee creation date and time
-
-## Work Items Table
-
-The `work_items` table stores work assigned to employees.
-
-### Important Fields
-
-- `id` - Primary key
-- `title` - Work item title
-- `description` - Work item description
-- `employee_id` - Foreign key to employees
-- `status` - TODO, IN_PROGRESS or COMPLETED
-- `priority` - LOW, MEDIUM or HIGH
-- `due_date` - Optional due date
-- `created_at` - Work item creation date and time
-
-# Primary Key
-
-A primary key uniquely identifies each record in a database table.
-
-For example:
-
-- `employees.id`
-- `work_items.id`
-
-Each employee and work item has a unique ID.
-
-# Foreign Key
-
-A foreign key connects one database table to another table.
-
-In this project:
-
-```text
-work_items.employee_id
-          ↓
-employees.id
+``` json
+{
+  "total_work_items": 5,
+  "todo": 2,
+  "in_progress": 2,
+  "completed": 1
+}
 ```
 
-The `employee_id` in the `work_items` table identifies the employee assigned to the work item.
+  -----------------------------------------------------------------------
+  Field                               Description
+  ----------------------------------- -----------------------------------
+  `total_work_items`                  Total work items currently assigned
+                                      to the employee.
 
-# SQLAlchemy Relationship
+  `todo`                              Number of `TODO` items.
 
-SQLAlchemy relationships allow the application to work with related database records using Python objects.
+  `in_progress`                       Number of `IN_PROGRESS` items.
 
-In this project:
+  `completed`                         Number of `COMPLETED` items.
+  -----------------------------------------------------------------------
 
-```text
-Employee
-   │
-   └── WorkItem
-       ├── title
-       ├── status
-       ├── priority
-       └── employee_id
+Business rules:
+
+1.  Count only work items currently assigned to the requested employee.
+2.  Calculate counts in the database using SQLAlchemy.
+3.  The status counts must add up to `total_work_items`.
+4.  An existing employee with no work items receives zero for every
+    count.
+5.  A nonexistent employee receives HTTP 404.
+6.  Deleted items are excluded; reassigned items count for their current
+    employee.
+7.  Status changes are reflected in subsequent summary requests.
+
+Example for an employee without work items:
+
+``` json
+{
+  "total_work_items": 0,
+  "todo": 0,
+  "in_progress": 0,
+  "completed": 0
+}
 ```
 
-- One employee can have multiple work items.
-- A work item belongs to one employee.
+## 7. Work-Item Update APIs
 
-# CRUD Operations
+-   `PUT /work-items/{work_item_id}` --- updates fields supported by the
+    PUT schema.
+-   `PATCH /work-items/{work_item_id}` --- updates fields supported by
+    the PATCH schema.
 
-CRUD means:
+Test valid forward transitions, prohibited backward transitions, skipped
+transitions, same-status requests, invalid status values, null or
+missing status where required, and PUT requests that omit status. Ensure
+rejected transitions leave the record unchanged.
 
-- **Create**
-- **Read**
-- **Update**
-- **Delete**
+## 8. Validation and Error Handling
 
-Employee and WorkItem APIs implement CRUD operations using FastAPI and SQLAlchemy.
+-   Required fields cannot be empty.
+-   Invalid status, priority, and work-mode values are rejected.
+-   Invalid employee IDs are rejected.
+-   Duplicate employee email addresses are prevented.
+-   Missing employees and work items return HTTP 404.
+-   Invalid request data returns HTTP 422.
+-   Rejected transitions do not change existing records.
+-   Database changes should be committed only after validation succeeds.
 
-# Database Error Handling
+## 9. Database Design
 
-Database operations are handled using transactions.
+### Employees table
 
-If a database operation fails:
+Stores ID, name, email, department, primary skill, location, work mode,
+active status, and creation timestamp.
 
-1. The error is caught.
-2. The transaction is rolled back.
-3. The database session remains usable.
-4. An appropriate API error response is returned.
+### Work items table
 
-# Data Persistence
+Stores ID, title, description, employee ID, status, priority, due date,
+and creation timestamp.
 
-The application uses MySQL for persistent storage.
+The `employee_id` field in `work_items` references the assigned employee
+through a foreign key.
 
-Data remains available after restarting the FastAPI application.
+## 10. Database Configuration
 
-For example:
+Create a `.env` file in the project root:
 
-1. Create an employee.
-2. Create a work item.
-3. Stop the FastAPI server.
-4. Start the FastAPI server again.
-5. Request the employee or work item.
-6. The previously stored data is still available.
-
-# Swagger UI
-
-FastAPI automatically provides Swagger UI for testing the APIs.
-
-Swagger UI can be opened at:
-
-```text
-http://127.0.0.1:8000/docs
+``` env
+DATABASE_URL=mysql+pymysql://root:YOUR_PASSWORD@localhost:3306/employee_db
 ```
 
-Swagger was used to test:
+Replace `YOUR_PASSWORD` with your local MySQL password. Do not commit
+`.env` to GitHub. Keep `.env.example` with placeholder values.
 
-- Employee CRUD
-- Employee search
-- Employee filtering
-- Employee pagination
-- Work item CRUD
-- Work item assignment
-- Work item search
-- Work item filtering
-- Combined filters
-- Pagination
-- Validation errors
-- 404 errors
-- Delete operations
+## 11. Installation and Setup
 
-# What I Learned
+### Step 1: Clone the repository
 
-I learned how to connect a FastAPI application to a MySQL database using SQLAlchemy.
+``` powershell
+git clone https://github.com/chethan-hero/FastAPI-Employee-Management.git
+```
 
-I learned how to:
+### Step 2: Enter the project folder
 
-- Build REST APIs using FastAPI.
-- Use Pydantic for request validation.
-- Connect FastAPI to MySQL.
-- Use SQLAlchemy ORM.
-- Use Git branches.
-- Push code to GitHub.
-- Document the project using README.md.
+``` powershell
+cd FastAPI-Employee-Management
+```
 
-In Task 3, I learned how to implement search, filtering and pagination using SQLAlchemy queries. I also learned how query parameters work in FastAPI and how to validate values such as limit, offset and work mode.
+### Step 3: Create and activate a virtual environment
 
-In Task 4, I learned how to create a WorkItem model and connect it with the Employee model using a foreign key and SQLAlchemy relationship. I also learned how to implement work item CRUD operations, filtering, combined filters, pagination, validation and assigned employee details in API responses.
+``` powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
 
-# Difficulties
+### Step 4: Install dependencies
 
-I faced difficulties while setting up the MySQL connection, configuring the database connection details, handling duplicate email validation, and understanding SQLAlchemy database operations.
+``` powershell
+python -m pip install -r requirements.txt
+```
 
-I also faced some issues while testing the APIs using Swagger UI.
+### Step 5: Configure MySQL
 
-During Task 3, I faced difficulties while implementing the pagination response structure, combining multiple filters, and testing different query parameter combinations.
+Ensure MySQL is running, then create the database if needed:
 
-During Task 4, I faced difficulties while implementing the Employee and WorkItem relationship, handling the assigned employee response, testing combined filters and pagination, and validating invalid status, priority and employee values.
+``` sql
+CREATE DATABASE employee_db;
+```
 
-# Project Status
+Configure `DATABASE_URL` in `.env` and ensure the application
+initializes the required tables.
 
-## Task 1
+### Step 6: Start the application
 
-Employee Management API implemented.
+``` powershell
+python -m uvicorn app.main:app --reload
+```
 
-## Task 2
+## 12. Application URLs
 
-MySQL database integration and SQLAlchemy persistence implemented.
+-   Application: http://127.0.0.1:8000
+-   Swagger UI: http://127.0.0.1:8000/docs
+-   Health check: http://127.0.0.1:8000/health
 
-## Task 3
+Use Swagger UI to test employee endpoints, work-item endpoints, status
+transitions, and summary responses.
 
-Employee search, filtering and pagination implemented.
+## 13. Testing Checklist
 
-## Task 4
+### Status transitions
 
-Work Item Management API implemented with:
+-   Valid forward transitions.
+-   Prohibited backward and skipped transitions.
+-   Requesting the current status again.
+-   Invalid, null, or missing status values.
+-   PUT requests that omit status.
+-   Rejected updates leave stored data unchanged.
 
-- Work item CRUD
-- Employee assignment
-- Employee reassignment
-- Foreign key relationship
-- SQLAlchemy relationship
-- Work item search
-- Work item filtering
-- Combined filters
-- Pagination
-- Validation
-- Error handling
-- Database persistence
+### Employee summary
 
-# Conclusion
+-   Employee with multiple work items.
+-   Employee with no work items.
+-   Nonexistent employee.
+-   Summary before and after status changes.
+-   Summary before and after reassignment or deletion.
+-   Status counts add up to the total.
 
-This project demonstrates a FastAPI backend connected to MySQL using SQLAlchemy.
+### Regression and persistence
 
-The application supports employee management and work item management with validation, CRUD operations, search, filtering, pagination, database relationships and persistent storage.
+-   Employee and work-item CRUD operations.
+-   Search, filtering, combined filters, and pagination.
+-   Request validation.
+-   Data remains correct after restarting the application.
 
-The project was tested using Swagger UI and the code is maintained using Git and GitHub.
+## 14. HTTP Status Codes
+
+  Code                          Meaning
+  ----------------------------- ---------------------------------------
+  `200 OK`                      Request completed successfully.
+  `201 Created`                 Resource created successfully.
+  `204 No Content`              Resource deleted successfully.
+  `404 Not Found`               Employee or work item does not exist.
+  `422 Unprocessable Entity`    Request validation failed.
+  `500 Internal Server Error`   Unexpected server-side error.
+
+## 15. Task 5 Objectives
+
+1.  Implement controlled work-item status transitions.
+2.  Reuse status-transition logic across PUT and PATCH.
+3.  Separate request validation, business rules, and route handling.
+4.  Calculate employee work-item summaries using SQLAlchemy.
+5.  Count only currently assigned work items.
+6.  Handle missing employees and work items correctly.
+7.  Prevent rejected updates from modifying existing data.
+8.  Preserve database changes across application restarts.
+9.  Maintain compatibility with existing APIs.
+
+## 16. What I Learned
+
+-   Building REST APIs using FastAPI.
+-   Validating requests using Pydantic.
+-   Connecting FastAPI to MySQL.
+-   Using SQLAlchemy ORM, primary keys, foreign keys, and relationships.
+-   Implementing CRUD, search, filtering, and pagination.
+-   Applying service-layer business rules and reusing them across
+    routes.
+-   Validating status transitions and calculating aggregate counts.
+-   Handling HTTP errors and testing APIs in Swagger UI.
+-   Checking database persistence and managing code with Git and GitHub.
+
+## 17. Difficulties Faced
+
+I faced difficulties setting up the MySQL connection, configuring
+database credentials, handling duplicate email validation, understanding
+SQLAlchemy operations, and testing APIs in Swagger UI.
+
+In Task 3, I worked through pagination response structures, combined
+filters, and query-parameter validation. In Task 4, I worked through
+Employee--WorkItem relationships, assigned employee responses,
+filtering, pagination, and validation of invalid status, priority, and
+employee values.
+
+## 18. Project Status
+
+-   **Task 1:** Employee Management API.
+-   **Task 2:** MySQL integration and SQLAlchemy persistence.
+-   **Task 3:** Employee search, filtering, and pagination.
+-   **Task 4:** Work-item CRUD, employee assignment and reassignment,
+    relationships, search, filtering, pagination, validation, and error
+    handling.
+-   **Task 5:** Work-item status transitions and employee work-item
+    summary API. Confirm that the implementation is tested in the Task 5
+    branch before marking this task complete.
+
+## 19. GitHub Repository
+
+-   **Repository:**
+    https://github.com/chethan-hero/FastAPI-Employee-Management
+-   **Task 5 branch:**
+    https://github.com/chethan-hero/FastAPI-Employee-Management/tree/task-5
+-   **Local API documentation:** http://127.0.0.1:8000/docs
