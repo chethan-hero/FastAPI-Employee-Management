@@ -213,7 +213,6 @@ Replace `YOUR_PASSWORD` with your local MySQL password. Do not commit
 ### Step 1: Clone the repository
 
 ``` powershell
-git clone https://github.com/chethan-hero/FastAPI-Employee-Management.git
 ```
 
 ### Step 2: Enter the project folder
@@ -348,16 +347,3 @@ employee values.
     summary API. Confirm that the implementation is tested in the Task 5
     branch before marking this task complete.
 
-## 19. GitHub Repository
-
--   **Repository:**
-    https://github.com/chethan-hero/FastAPI-Employee-Management
--   **Task 5 branch:**
-    https://github.com/chethan-hero/FastAPI-Employee-Management/tree/task-5
--   **Local API documentation:** http://127.0.0.1:8000/docs
-
-------------------------------------------------------------------------
-
-**Project:** FastAPI Employee Management System\
-**Task:** Task 5 --- Work-Item Status Transitions and Employee Work-Item
-Summary API
