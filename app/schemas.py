@@ -1,3 +1,4 @@
+
 from datetime import date, datetime
 from typing import Optional
 
@@ -130,10 +131,10 @@ class WorkItemCreate(BaseModel):
             raise ValueError("Description cannot exceed 1000 characters")
         return value
 
-    @field_validator("status")
+    @field_validator("status", mode="before")
     @classmethod
     def validate_status(cls, value):
-        if value not in VALID_STATUSES:
+        if not isinstance(value, str) or value not in VALID_STATUSES:
             raise ValueError(
                 "Status must be TODO, IN_PROGRESS, or COMPLETED"
             )
@@ -235,6 +236,7 @@ class WorkItemListResponse(BaseModel):
 
 
 class EmployeeWorkItemSummary(BaseModel):
+    employee_id: int = Field(..., gt=0)
     total_work_items: int = Field(..., ge=0)
     todo: int = Field(..., ge=0)
     in_progress: int = Field(..., ge=0)

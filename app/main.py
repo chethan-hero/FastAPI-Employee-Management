@@ -1,3 +1,4 @@
+
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
@@ -58,33 +59,28 @@ def create_employee(
                 detail="Email already exists",
             )
 
-        new_employee = Employee(
-            **employee.model_dump()
-        )
-
+        new_employee = Employee(**employee.model_dump())
         db.add(new_employee)
         db.commit()
         db.refresh(new_employee)
-
         return new_employee
 
     except HTTPException:
         db.rollback()
         raise
-
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail="Database constraint error",
         )
-
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(
             status_code=500,
             detail="Database error",
         )
+
 
 @app.get(
     "/employees",
@@ -110,20 +106,17 @@ def get_employees(
 
         if work_mode:
             work_mode = work_mode.upper()
-
             if work_mode not in VALID_WORK_MODES:
                 raise HTTPException(
                     status_code=422,
                     detail="work_mode must be WFH or WFO",
                 )
-
             query = query.filter(Employee.work_mode == work_mode)
 
         if is_active is not None:
             query = query.filter(Employee.is_active == is_active)
 
         total = query.count()
-
         items = (
             query.order_by(Employee.id.asc())
             .offset(offset)
@@ -140,12 +133,13 @@ def get_employees(
 
     except HTTPException:
         raise
-
     except SQLAlchemyError:
         raise HTTPException(
             status_code=500,
             detail="Database error",
         )
+
+
 @app.get(
     "/employees/{employee_id}",
     response_model=schemas.EmployeeResponse,
@@ -197,8 +191,7 @@ def update_employee(
             duplicate = (
                 db.query(Employee)
                 .filter(
-                    func.lower(Employee.email)
-                    == update_data["email"].lower(),
+                    func.lower(Employee.email) == update_data["email"].lower(),
                     Employee.id != employee_id,
                 )
                 .first()
@@ -215,26 +208,24 @@ def update_employee(
 
         db.commit()
         db.refresh(existing)
-
         return existing
 
     except HTTPException:
         db.rollback()
         raise
-
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail="Database constraint error",
         )
-
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(
             status_code=500,
             detail="Database error",
         )
+
 
 @app.delete(
     "/employees/{employee_id}",
@@ -268,6 +259,7 @@ def delete_employee(
             detail="Database error",
         )
 
+
 @app.post(
     "/work-items",
     response_model=schemas.WorkItemResponse,
@@ -277,6 +269,13 @@ def create_work_item(
     work_item: schemas.WorkItemCreate,
     db: Session = Depends(get_db),
 ):
+    # Valid non-TODO statuses are not allowed on creation.
+    if work_item.status != "TODO":
+        raise HTTPException(
+            status_code=400,
+            detail="New work items must start with TODO status",
+        )
+
     employee = (
         db.query(Employee)
         .filter(Employee.id == work_item.employee_id)
@@ -291,7 +290,6 @@ def create_work_item(
 
     try:
         new_work_item = WorkItem(**work_item.model_dump())
-
         db.add(new_work_item)
         db.commit()
         db.refresh(new_work_item)
@@ -309,7 +307,6 @@ def create_work_item(
             status_code=400,
             detail="Database constraint error",
         )
-
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(
@@ -345,28 +342,23 @@ def get_work_items(
 
         if status_filter:
             status_filter = status_filter.upper()
-
             if status_filter not in VALID_STATUSES:
                 raise HTTPException(
                     status_code=422,
                     detail="status must be TODO, IN_PROGRESS or COMPLETED",
                 )
-
             query = query.filter(WorkItem.status == status_filter)
 
         if priority:
             priority = priority.upper()
-
             if priority not in VALID_PRIORITIES:
                 raise HTTPException(
                     status_code=422,
                     detail="priority must be LOW, MEDIUM or HIGH",
                 )
-
             query = query.filter(WorkItem.priority == priority)
 
         total = query.count()
-
         items = (
             query.order_by(WorkItem.id.asc())
             .offset(offset)
@@ -383,7 +375,6 @@ def get_work_items(
 
     except HTTPException:
         raise
-
     except SQLAlchemyError:
         raise HTTPException(
             status_code=500,
@@ -417,7 +408,6 @@ def get_work_item(
 
     except HTTPException:
         raise
-
     except SQLAlchemyError:
         raise HTTPException(
             status_code=500,
@@ -425,8 +415,9 @@ def get_work_item(
         )
 
 
+
 @app.get(
-    "/employees/{employee_id}/work-items/summary",
+    "/employees/{employee_id}/work-summary",
     response_model=schemas.EmployeeWorkItemSummary,
 )
 def employee_work_item_summary(
@@ -446,6 +437,8 @@ def employee_work_item_summary(
 
     return summary
 
+
+
 @app.put(
     "/work-items/{work_item_id}",
     response_model=schemas.WorkItemResponse,
@@ -461,10 +454,8 @@ def update_work_item_put(
             work_item_id,
             payload.model_dump(exclude_unset=True),
         )
-
     except services.StatusTransitionError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
-
+        raise HTTPException(status_code=400, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
@@ -492,10 +483,37 @@ def update_work_item_patch(
             work_item_id,
             payload.model_dump(exclude_unset=True),
         )
-
     except services.StatusTransitionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
+    if work_item is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Work item not found",
+        )
+
+    return work_item
+
+
+@app.patch(
+    "/work-items/{work_item_id}/status",
+    response_model=schemas.WorkItemResponse,
+)
+def update_work_item_status(
+    work_item_id: int,
+    payload: schemas.WorkItemStatusUpdate,
+    db: Session = Depends(get_db),
+):
+    try:
+        work_item = services.update_work_item(
+            db,
+            work_item_id,
+            {"status": payload.status},
+        )
+    except services.StatusTransitionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 

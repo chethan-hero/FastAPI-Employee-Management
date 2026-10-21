@@ -23,17 +23,16 @@ def change_work_item_status(
     work_item: WorkItem,
     new_status: str,
 ) -> WorkItem:
-    """
-    Validate and apply a status change.
+    """Validate and apply a work-item status transition."""
 
-    Requesting the current status again is treated as a no-op.
-    """
-
-    if new_status not in VALID_STATUSES:
-        raise StatusTransitionError("Invalid work-item status")
+    if not isinstance(new_status, str) or new_status not in VALID_STATUSES:
+        raise ValueError(
+            "Status must be TODO, IN_PROGRESS, or COMPLETED"
+        )
 
     current_status = work_item.status
 
+    # Repeating the current status is not a transition.
     if new_status == current_status:
         return work_item
 
@@ -41,8 +40,7 @@ def change_work_item_status(
 
     if new_status not in allowed:
         raise StatusTransitionError(
-            f"Cannot change status from {current_status} "
-            f"to {new_status}"
+            f"Cannot change status from {current_status} to {new_status}"
         )
 
     work_item.status = new_status
@@ -54,12 +52,7 @@ def update_work_item(
     work_item_id: int,
     update_data: dict,
 ) -> WorkItem | None:
-    """
-    Update a work item.
-
-    Use this function for PUT and PATCH so that both endpoints
-    apply the same status-transition rules.
-    """
+    """Update a work item using shared status-transition rules."""
 
     work_item = (
         db.query(WorkItem)
@@ -70,10 +63,8 @@ def update_work_item(
     if work_item is None:
         return None
 
-    new_status = update_data.get("status")
-
-    if new_status is not None:
-        change_work_item_status(db, work_item, new_status)
+    if "status" in update_data:
+        change_work_item_status(db, work_item, update_data["status"])
 
     new_employee_id = update_data.get("employee_id")
 
@@ -108,12 +99,7 @@ def get_employee_work_item_summary(
     db: Session,
     employee_id: int,
 ) -> dict | None:
-    """
-    Return status counts for an existing employee.
-
-    Returns None if the employee does not exist.
-    Counts are calculated by the database.
-    """
+    """Return database-calculated work-item counts for an employee."""
 
     employee_exists = (
         db.query(Employee.id)
@@ -129,28 +115,19 @@ def get_employee_work_item_summary(
             func.count(WorkItem.id).label("total_work_items"),
             func.coalesce(
                 func.sum(
-                    case(
-                        (WorkItem.status == "TODO", 1),
-                        else_=0,
-                    )
+                    case((WorkItem.status == "TODO", 1), else_=0)
                 ),
                 0,
             ).label("todo"),
             func.coalesce(
                 func.sum(
-                    case(
-                        (WorkItem.status == "IN_PROGRESS", 1),
-                        else_=0,
-                    )
+                    case((WorkItem.status == "IN_PROGRESS", 1), else_=0)
                 ),
                 0,
             ).label("in_progress"),
             func.coalesce(
                 func.sum(
-                    case(
-                        (WorkItem.status == "COMPLETED", 1),
-                        else_=0,
-                    )
+                    case((WorkItem.status == "COMPLETED", 1), else_=0)
                 ),
                 0,
             ).label("completed"),
@@ -160,6 +137,7 @@ def get_employee_work_item_summary(
     )
 
     return {
+        "employee_id": employee_id,
         "total_work_items": result.total_work_items,
         "todo": result.todo,
         "in_progress": result.in_progress,
